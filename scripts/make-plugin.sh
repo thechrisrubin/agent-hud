@@ -12,7 +12,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$HOME/Desktop/agent-hud.zip"
+OUT="$HOME/Desktop/agent-hud-live.zip"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 
@@ -28,9 +28,9 @@ mkdir -p "$BUILD/.claude-plugin" "$BUILD/hooks"
 
 cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
-  "name": "agent-hud",
-  "description": "v1.4 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
-  "version": "1.4.0",
+  "name": "agent-hud-live",
+  "description": "Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
+  "version": "1.0.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
