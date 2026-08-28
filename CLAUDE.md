@@ -4,7 +4,11 @@ You are building a production tool for one operator, CR. He does not write code 
 
 ## Current phase
 
-**Phase 0, live probes.** Follow `probes/RUNBOOK.md` step by step. Do not write implementation code (state engine, HUD, adapters) until the runbook's wrap-up is complete and CR has said GO on the architecture.
+**Phase 1 shipped and largely accepted. Read `docs/CURRENT-STATE.md` FIRST** — it says what works, what is broken, and what to try, and it will save you rediscovering all of it.
+
+Short version as of 2026-08-28: the HUD runs, local sessions report correctly, click-through to a Cowork thread works (`claude://claude.ai/cowork/<cse_id>`), and 73 tests pass. New Cowork threads stopped arriving after repeated plugin reinstalls; the cause appears to be account-to-cloud plugin sync, not anything in this repo.
+
+Phase 0's findings document contains **four conclusions that were later proven wrong**, two of them false negatives on CR's primary use case. Its corrections are marked inline. Treat every negative in that file as an unsuccessful search rather than a proven impossibility.
 
 ## Standing rules (from the brief — non-negotiable)
 
