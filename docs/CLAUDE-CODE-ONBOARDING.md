@@ -33,11 +33,19 @@ Everything else is plain English typed at the prompt.
 
 ## Handing it a task, and reading what comes back
 
-Type what you want as if briefing Sapir: outcome, constraints, done-state. For this project, your first message is one line:
+Type what you want as if briefing a contractor: outcome, constraints, done-state. One line is usually enough:
 
-> Read CLAUDE.md and run the Phase 0 probe runbook. I'm here for the steps that need my hands.
+> Read CLAUDE.md and build Phase 2. I'm here for the steps that need my hands.
 
-It will narrate each step in a sentence, ask before installing anything, and stop at the checkpoints that need you (installing the probe plugin, starting a session from your phone). When it finishes, it writes its findings into `docs/PHASE0-FINDINGS.md` and gives you a five-sentence verdict. If it asks a question you don't understand, say so — "explain that like I don't code" works verbatim.
+It will narrate each step in a sentence, ask before installing anything, and stop at the checkpoints that need you. When it finishes it writes its findings to a file and gives you a short verdict. If it asks something you don't understand, say so — "explain that like I don't code" works verbatim.
+
+**Useful things to ask it about the HUD**, once you're running it daily:
+
+> A tile went red but I stopped that thread myself. Fix it.
+
+> Routine "daily-briefing" is showing up even though routines are off. Make the filter catch it.
+
+> Show me the last hour of the HUD's log and tell me if anything looks wrong.
 
 One habit worth keeping: when it claims something is done, ask "show me the evidence." This project's rules already force it to keep evidence files, so the answer should always be a file it can show you.
 

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self';" />
+    <title>Agent HUD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="drag">
+        <span class="mark" aria-hidden="true"></span>
+        <h1>Agent HUD</h1>
+        <span id="counts" class="counts"></span>
+      </div>
+      <div class="controls">
+        <button id="quiet" type="button" title="Show or hide idle and stale threads">Quiet threads</button>
+        <button id="ontop" type="button" title="Keep this window above others">On top</button>
+        <button id="min" type="button" aria-label="Minimise">–</button>
+        <button id="close" type="button" aria-label="Close">×</button>
+      </div>
+    </header>
+
+    <main id="grid" class="grid" aria-live="polite"></main>
+
+    <p id="empty" class="empty" hidden>
+      <strong>Nothing running right now.</strong>
+      Start a thread in Claude and it will appear here within a couple of seconds.
+    </p>
+
+    <footer class="status">
+      <span id="dot" class="dot"></span>
+      <span id="status">Starting…</span>
+      <span id="toast" class="toast" hidden></span>
+    </footer>
+
+    <script type="module" src="renderer.js"></script>
+  </body>
+</html>

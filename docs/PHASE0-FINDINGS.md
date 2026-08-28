@@ -250,7 +250,24 @@ Additionally, the pinned-thread UUIDs are **v4** while hook session IDs are **v5
 
 **Recommended replacement, for CR's approval:** clicking a tile fires `claude://` to focus the app and copies **the thread's title text** (the first prompt) to the clipboard, so CR can paste it straight into the app's search and land on the thread. That uses the one identifier both sides genuinely share — the words CR himself typed. Slightly less elegant than an ID lookup, considerably more likely to actually work.
 
-**Phase 1 should spend thirty minutes trying to close this properly** before settling for search-by-title: capture a `cse_` ID and a hook `session_id` for the *same* thread with certainty (this probe inferred the pairing from CR's description rather than proving it), and check whether `transcript_path` inside the Cowork container encodes either ID. If a mapping exists, real click-to-jump becomes possible and the tile gets meaningfully better. If not, search-by-title is the honest ceiling.
+### The mapping hunt was run, and it is exhausted (2026-08-28, at CR's instruction)
+
+Three avenues, all closed:
+
+**1. Is the mapping computable?** No. The `cse_` ID is Anthropic's standard opaque resource format — `<prefix>_01` plus 22 base62 characters. The captured events contain two other IDs of exactly that shape (`toolu_01…`, and `trig_01NvKSToaQKkn5crEoRyVms4` from the scheduled-trigger creation, which arrived *inside a real Cowork payload*). Opaque server-assigned IDs are random; hook `session_id`s are UUID **v5**, which is a deterministic hash. Two different generation schemes mean no arithmetic converts one to the other. 40 v5-derivation attempts (5 standard namespaces × 8 name forms) produced zero matches.
+
+**2. Is it in the payloads or paths?** No. Cowork's `transcript_path` is `/root/.claude/projects/-home-claude/<session_id>.jsonl` — it just repeats the UUID. `agent_transcript_path` nests the same UUID. No `cse_` string appears in any of the 450 captured events.
+
+**3. Does the container know its own conversation ID?** **No — and this is the decisive finding.** CR ran an introspection prompt inside a live Cowork session. Results:
+
+- `/root/.claude/sessions/466.json` contains `{"pid":466,"sessionId":"d97e38f0-edae-5836-80ff-2a5fd4e4b87a","cwd":"/home/…"}` — the container's own identifier is a **UUID v5**, matching the hook `session_id` scheme exactly.
+- **Nothing readable in the sandbox contains a `cse_` string.** The session's own conclusion: the `cse_` ID is minted **server-side by claude.ai at share time** and lives in the web conversation's URL. It was never written to the container's filesystem, so no amount of grepping will surface it.
+
+That last point carries an extra implication worth stating: if `cse_` is minted at *share* time, it may be a share-link artifact rather than the thread's durable identity — in which case it was never the right join key even if we could have obtained it.
+
+**VERDICT: no mapping is obtainable. Click-to-jump ships as `claude://` to focus the app plus the thread's title on the clipboard.** This is now an evidence-backed design decision rather than a concession, and Phase 1 should not re-open it without new information from Anthropic.
+
+**A side finding worth carrying into any future in-session work:** Cowork's own permission classifier blocked three of the six introspection commands, reading directory sweeps near key material as credential harvesting — correctly, since `/root/.claude/sessions/` also holds a `.key` file. Anything that needs a Cowork session to inspect itself must state its intent plainly and target specific files; broad `env`/`grep` sweeps will be refused. Budget for that in Phase 4 rather than discovering it live.
 
 ## Q6 — Scheduled tasks: same events as interactive threads?
 
@@ -356,9 +373,15 @@ This is a deliberate departure from the brief, and it should be visible rather t
 
 Implementation note so this doesn't leak in by accident: routine sessions are identifiable by `cwd` resolving under `~/Documents/Claude/Scheduled/<slug>`, and by arriving unattended with no prior `UserPromptSubmit` from CR. Filter at the adapter boundary, not in the UI, so no routine event ever reaches the state engine.
 
-### 2. Hunt for an ID mapping before settling for search-by-title
+### 2. Hunt for an ID mapping before settling for search-by-title — DONE, came back negative
 
-CR chose to spend the time. Status and findings in the Q5 section above.
+CR chose to spend the time rather than accept the fallback on inference. The hunt ran to exhaustion across three avenues and closed the question: no mapping exists that the HUD can obtain. Full evidence in the Q5 section above.
+
+Worth recording that the time was well spent even though the answer was no. Before the hunt, "copy the title instead of the ID" was a guess dressed as a decision. After it, it is the only available design, and Phase 1 can implement it without a lingering suspicion that something better was missed.
+
+### 3. Click-to-jump behaviour: focus the app, copy the title
+
+Follows from decision 2. Clicking a tile fires `claude://` (the app's own registered scheme, verified to focus it) and puts the thread's title text on the clipboard so CR can paste it into the app's search. **The tile must say plainly that direct navigation isn't available** — per Section 5, a control that silently does nothing is worse than no control.
 
 ---
 
@@ -368,7 +391,8 @@ CR chose to spend the time. Status and findings in the Q5 section above.
 - **The quick tunnel and capture server were shut down.** Nothing from this probe run is left listening.
 - **`cloudflared` 2026.8.2 remains installed** (via Homebrew, with CR's approval) and Phase 1 needs it.
 - **Artifacts left in place:** `probes/captured/events.ndjson` (304 events — the evidence base), `probes/captured/q4-url-results.txt`, `/tmp/agent-hud-probe/` and `/tmp/agent-hud-marketplace/` (scratch, disposable), and `agent-hud-probe.zip` + `agent-hud-probe-foldered.zip` on CR's Desktop (safe to delete).
-- **Not done:** the GitHub backup repo from `CLAUDE.md`. `gh` is not installed and CR deferred it to keep the probes moving. The tree is in Box, so it is backed up but unversioned. Carry this into Phase 1.
+- **GitHub backup repo (`CLAUDE.md` first-session task): PARTIALLY DONE, then parked.** `gh` 2.98.0 is installed; the repo is initialised on `main` with a `.gitignore` (which explicitly un-ignores `probes/captured/**` so no future rule can swallow the evidence base) and one commit, `8000a5a`, 18 files. **The push did not happen — CR is locked out of his GitHub account.** Not a technical blocker on our side and nothing depends on it: local git already provides version history, and the tree lives in Box, so it is backed up. To finish once he regains access, from a real Terminal window (not Claude Code's `!` prefix, which cannot supply the interactive TTY `gh auth login` needs — this wasted two attempts): `gh auth login --web --git-protocol https`, then `gh repo create agent-hud --private --source . --remote origin --push`.
+- **The repo must stay private.** A scan of all 450 captured events found no credentials, no tokens, and no other client work — the captured prompts are almost entirely synthetic probe strings. But CR's full filesystem path appears ~620 times and encodes his employer, department, and internal programme names; the docs also name his installed plugins, his usage fingerprint, and the HUD's planned authentication design for an endpoint intended to face the internet. Treat "make this public" as a decision requiring a scrub, not a toggle.
 - **Reproducing the capture analysis** needs no live sessions: `node probes/summarize-captures.mjs --all` regenerates the full payload breakdown from the committed evidence file.
 
 ---
@@ -415,11 +439,15 @@ CR chose to spend the time. Status and findings in the Q5 section above.
 
 **NEXT PHASE — GO / NO-GO**
 
-**GO for Phase 1, conditional on CR's sign-off on the architecture and on two decisions below.** Every Section 6 question is answered with live evidence. The architecture is simpler than the brief anticipated — one Cowork class, one ingest path, one adapter shape serving both transports — and the payload data is richer than assumed, removing several inference rules the brief expected to need.
+**GO for Phase 1.** Every Section 6 question is answered with live evidence, and both decisions the GO was conditional on have been made by CR (see Operator decisions above): scheduled routines are out of scope, and click-to-jump ships as focus-plus-copy-title after the mapping hunt came back negative.
 
-Two decisions belong to CR before implementation starts:
+The architecture is simpler than the brief anticipated — one Cowork class, one ingest path, one adapter shape serving both transports — and the payload data is richer than assumed, removing several inference rules the brief expected to need. It is also more fragile than the brief anticipated, because Q2 removed the fallback path. Those two facts should be held together: the thing to build is small, and the thing to monitor is that it keeps working.
 
-- **Scheduled-routine tiles.** Do 21 daily routines each get their own sticky `DONE` tile, or do runs group under one tile per routine name? Recommendation: group, with a run count and the newest run's state. This modifies the sticky-`DONE` rule and therefore cannot be decided quietly.
-- **Click-to-jump behaviour.** Accept focus-app-plus-copy-title, or spend Phase 1 time hunting a `cse_` ↔ `session_id` mapping first? Recommendation: timebox the hunt to thirty minutes, then ship search-by-title.
+**Phase 1 builds, in order:**
 
-Phase 1 builds, in order: the named tunnel with shared-secret auth, the hook adapter (one implementation, both transports), the state engine with unit tests covering every transition including the `is_interrupt` and sticky-`DONE` rules, then the Electron grid.
+1. **Named Cloudflare tunnel with shared-secret authentication.** CR runs the network-exposing step himself; the installer must make that one command with a plain explanation. The endpoint rejects unauthenticated POSTs from the first commit — not as later hardening.
+2. **The hook adapter.** One implementation. Cowork and local Claude Code differ only in transport and labelling; `cwd` is the class discriminator (`/home/claude` = Cowork). Filter routine sessions out at this boundary so no routine event reaches the state engine.
+3. **The state engine, with unit tests before any UI.** Every transition in the derived-state table in [`PHASE0-PAYLOADS.md`](PHASE0-PAYLOADS.md), plus the three rules the captures forced: lazy tile creation on any first event, `is_interrupt === true` → `IDLE` not `ERROR`, and `SessionEnd` never downgrading a sticky `DONE`.
+4. **The Electron grid.** Built against a realistic thread count, not five tiles — CR's real working set runs to over a hundred.
+
+**Revised Phase 1 acceptance criterion.** The brief's original test ("three Cowork threads, at least one from his phone, all appear within five seconds with correct states") stands and is now known to be achievable — all five probe sessions delivered complete streams. Add one criterion the probes showed matters: **a thread CR interrupts must not show as `ERROR`.** That is the failure most likely to erode his trust in the colours, and it is the one the payload data specifically lets us get right.

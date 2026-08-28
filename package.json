@@ -1,0 +1,19 @@
+{
+  "name": "agent-hud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A heads-up display for every active AI thread. Shows which threads need you and which are done.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/renderer && cp src/renderer/index.html src/renderer/styles.css dist/renderer/",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "start": "npm run build && electron .",
+    "hud": "electron ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^33.3.1",
+    "typescript": "^5.7.2"
+  }
+}
