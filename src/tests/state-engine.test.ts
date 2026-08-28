@@ -334,10 +334,25 @@ test('a thread first seen mid-flight is named after its folder, not "Untitled"',
   assert.equal(e.get('thread-1')!.title, 'agent-hud');
 });
 
-test('Cowork threads do not get a folder title — /home/claude names nothing', () => {
+test('a Cowork thread joined mid-flight says what it is, not "Untitled"', () => {
+  // Every Cowork session reports /home/claude, and no other field carries a
+  // name, so a tile joined mid-flight stays anonymous until the operator's
+  // next message. "Untitled thread" reads like a bug; "Claude thread" reads
+  // like a fact.
   const e = new StateEngine();
   e.apply(ev('tool_started', { detail: { cwd: '/home/claude' } }));
-  assert.equal(e.get('thread-1')!.title, 'Untitled thread');
+  assert.equal(e.get('thread-1')!.title, 'Claude thread');
+});
+
+test('a subagent is named even when agent_type is empty', () => {
+  // Cowork subagents report an empty agent_type; local ones send a real value.
+  const e = new StateEngine();
+  e.apply(ev('subagent_finished', { threadId: 'kid', parentThreadId: 'mum', detail: { agentType: '' } }));
+  assert.equal(e.get('kid')!.title, 'subagent');
+
+  const e2 = new StateEngine();
+  e2.apply(ev('subagent_started', { threadId: 'kid2', parentThreadId: 'mum', detail: { agentType: 'general-purpose' } }));
+  assert.equal(e2.get('kid2')!.title, 'subagent · general-purpose');
 });
 
 test('the first real prompt replaces a fallback title; later prompts do not rename it', () => {

@@ -54,6 +54,9 @@ export function stateSortOrder(s: ThreadState): number {
   return STATE_SORT_ORDER[s];
 }
 
+/** Every Cowork session reports this working directory, without exception. */
+export const COWORK_CWD = '/home/claude';
+
 const MAX_HISTORY = 200;
 const TITLE_MAX = 90;
 
@@ -65,14 +68,24 @@ function deriveTitle(ev: ThreadEvent): string {
     const oneLine = ev.detail.promptText.replace(/\s+/g, ' ').trim();
     return oneLine.length > TITLE_MAX ? oneLine.slice(0, TITLE_MAX - 1) + '…' : oneLine;
   }
-  if (ev.detail.agentType) return `subagent · ${ev.detail.agentType}`;
+  // Cowork subagents report an EMPTY agent_type (observed live — local ones
+  // send "general-purpose"), so this must not rely on the field being useful.
+  const agentType = ev.detail.agentType?.trim();
+  if (agentType) return `subagent · ${agentType}`;
+  if (ev.parentThreadId) return 'subagent';
+
   // The HUD frequently starts watching a session mid-flight, so the first
-  // event it sees is often a tool call with no prompt attached. The working
-  // directory's folder name is a far better handle than "Untitled thread" —
-  // it is how the operator thinks about his projects. Cowork sessions all
-  // report /home/claude, which identifies nothing, so they are excluded.
+  // event it sees is often a tool call with no prompt attached.
   const cwd = ev.detail.cwd;
-  if (cwd && cwd !== '/home/claude') {
+  if (cwd === COWORK_CWD) {
+    // Every Cowork session reports /home/claude, which identifies nothing, and
+    // no other field carries a name. The tile stays anonymous until the
+    // operator's next message in that thread supplies one — so say what it is
+    // rather than "Untitled", which reads like a bug.
+    return 'Claude thread';
+  }
+  if (cwd) {
+    // A local session's folder name is how the operator thinks about the work.
     const folder = cwd.split('/').filter(Boolean).pop();
     if (folder) return folder;
   }
