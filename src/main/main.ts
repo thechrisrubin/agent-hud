@@ -223,9 +223,22 @@ ipcMain.handle('hud:toggle-on-top', () => {
  * old focus-and-copy behaviour remains as the fallback — and says so plainly
  * rather than looking like a failed click.
  */
+/**
+ * The thread's address in the Claude app.
+ *
+ * This is the app's own web URL with the `claude:` scheme in front of it —
+ * `https://claude.ai/cowork/cse_01D8DAge…` becomes
+ * `claude://claude.ai/cowork/cse_01D8DAge…`. The id is used exactly as it
+ * arrives from CLAUDE_CODE_REMOTE_SESSION_ID; no rewriting.
+ *
+ * An earlier version invented two transformations — `/code` instead of
+ * `/cowork` (because the env var is named CLAUDE_CODE_…) and `cse_` rewritten
+ * to `session_` (copied from a commit-message template). Both were guesses,
+ * and together they opened the Code section instead of the thread. The correct
+ * form came from reading the actual URL out of the browser's address bar.
+ */
 function appUrlFor(appSessionId: string): string {
-  const suffix = appSessionId.replace(/^cse_/, '');
-  return `claude://claude.ai/code/session_${suffix}`;
+  return `claude://claude.ai/cowork/${appSessionId}`;
 }
 
 ipcMain.handle('hud:jump', async (_e, threadId: string) => {
