@@ -58,7 +58,7 @@ Delivered against the brief:
 
 ## WHAT I COULD NOT VERIFY
 
-- **The tunnel path, end to end.** `setup-tunnel.sh` is written but unrun — a named tunnel needs CR's Cloudflare account and a domain. Until then Cowork and phone threads cannot reach the HUD, and **the Phase 1 acceptance test cannot be completed.** The transport itself was proven in Phase 0 with a throwaway tunnel; what is unproven is this specific script.
+- ~~**The tunnel path, end to end.**~~ **RESOLVED 2026-08-28 — see the addendum at the foot of this report.** The public address is live and verified.
 - **The visual result.** I could not screenshot — Terminal lacks screen-recording permission on this Mac. The data pipeline is verified from the state file; the pixels have not been seen by anyone but CR.
 - **`StopFailure` handling** — its payload was never captured, so its mapping to `ERROR` remains `// UNVERIFIED`.
 - **Eight-hour soak / memory growth** (§9) — not run. Needs a day of real use.
@@ -89,3 +89,49 @@ Delivered against the brief:
 4. Start three threads, one from the phone. Watch them appear, finish, go green, and clear when acknowledged.
 
 **Then Phase 2** (all Claude adapters, full-day use as the only tracking surface) is a **GO** — with one addition the Phase 0 evidence justifies: an `ERROR`-only view of routines. CR gave up all visibility into whether his 21 routines ran, and losing a daily briefing silently is a real cost. Showing a routine tile *only when a run fails* restores the safety net without the flood he was right to refuse.
+
+---
+
+# Addendum — the ingest address, and a security correction (2026-08-28, same day)
+
+Three things changed after the report above was written. All three are live and verified.
+
+## 1. The address exists: Tailscale, not Cloudflare
+
+CR's company domain is on Cloudflare but managed by his developer, who was unavailable. Rather than block, the relay decision was re-opened — the brief (§4.2) had asked for exactly this comparison and explicitly delegated the choice.
+
+**Tailscale Funnel wins on the deciding criterion the brief named: setup CR can complete without touching a config file.** It needs no domain, no DNS records, and nothing his developer owns. Cloudflare needs all three.
+
+- Address: `your-mac.tailXXXX.ts.net`
+- `scripts/setup-tailscale.sh` — installs, signs in, opens the port, and verifies from outside
+- `scripts/setup-tunnel.sh` — kept, for whenever the Cloudflare domain becomes available
+
+Verified live, from the public internet:
+
+| Test | Result |
+|---|---|
+| `GET /health` over the public address | 200, counters matched loopback |
+| `POST /ingest` with **no** secret | **401** — the endpoint is not publicly writable |
+| `POST /ingest` with the secret | 200, and it became a real tile |
+
+That third row is the whole architecture proven end to end: a request originating outside this Mac authenticated, was adapted, and rendered. It is the same path a Cowork session takes.
+
+## 2. Authentication is now required on every request, including loopback
+
+The original rule exempted loopback callers that carried no `X-Forwarded-For`. **That was a latent hole, and it nearly mattered.** A tunnel daemon runs *on* this Mac and proxies to loopback, so whether a remote request is distinguishable from a local one depends entirely on whether that specific tunnel sets a forwarding header. Cloudflare does — which is what the rule was written against. Tailscale had never been tested.
+
+Had Tailscale not set the header, every request through CR's new public address would have been accepted **without the secret**, with no symptom he could have noticed.
+
+**Tested after the fact: Tailscale does set it** (the server saw `100.80.121.82`), so the original rule would in fact have held. The correction stands anyway, and the reasoning is worth recording: the old design was *correct by luck*, resting on an unverified property of a component chosen after the code was written. The new rule — no secret, no write — cannot be broken by swapping the thing in front of it.
+
+`scripts/setup.sh` writes the secret into the local hooks it generates, so CR still never handles it. Phase 0's project-level probe hooks were retired: a committed file cannot carry a per-machine secret.
+
+## 3. Local ingest verified end to end
+
+`setup.sh` ran cleanly. It merged into `~/.claude/settings.json`, backed the file up first, and left CR's `statusLine`, `theme`, and notification settings untouched. A fresh `claude -p` session then authenticated and delivered five events.
+
+## What is still outstanding
+
+**Only the acceptance test itself.** The plugin is built (`~/Desktop/agent-hud.zip`) with the live address and secret embedded, and validated by `claude plugin validate`. What remains is CR uploading it and starting a Cowork thread.
+
+Everything between that thread and a tile on screen has now been exercised with real traffic — the transport by the reachability probe, the adapter and engine by replaying all 450 captured Cowork payloads. The one thing never observed end to end is a genuine Cowork session reaching *this* address through *this* plugin. Phase 0 proved Cowork can reach an arbitrary tunnel hostname; this is the same mechanism pointed at a different host.
