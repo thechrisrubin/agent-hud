@@ -59,7 +59,15 @@ for event in EVENTS:
         "type": "http",
         "url": url,
         "timeout": 5,
-        "headers": {"X-Hud-Secret": secret},
+        "headers": {
+            "X-Hud-Secret": secret,
+            # The Claude app's own id for this conversation. `allowedEnvVars`
+            # substitutes it here - verified live: substitution works in
+            # headers, NOT in the url. This is what lets clicking a tile open
+            # the actual thread instead of just focusing the app.
+            "X-Claude-Session": "${CLAUDE_CODE_REMOTE_SESSION_ID}",
+        },
+        "allowedEnvVars": ["CLAUDE_CODE_REMOTE_SESSION_ID"],
     }
     entry = {"hooks": [handler]}
     if event in MATCHED:

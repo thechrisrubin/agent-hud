@@ -186,3 +186,20 @@ test('a corrupt snapshot starts empty instead of refusing to start', () => {
 test('a missing snapshot is not an error', () => {
   assert.deepEqual(loadSnapshot('/nonexistent/path/state.json'), []);
 });
+
+test('a tile advertises direct opening only when it really has the id', () => {
+  const e = new StateEngine();
+  e.apply(ev('turn_finished', 'with', { detail: { appSessionId: 'cse_01ABC' } }));
+  e.apply(ev('turn_finished', 'without'));
+  const byId = new Map(project(e.all(), NOW, OPTS).tiles.map((t) => [t.threadId, t]));
+  assert.equal(byId.get('with')!.canOpenDirectly, true);
+  assert.equal(byId.get('without')!.canOpenDirectly, false);
+});
+
+test('the app session id survives a restart, so old tiles stay clickable', () => {
+  const e = new StateEngine();
+  e.apply(ev('turn_finished', 'a', { detail: { appSessionId: 'cse_01ABC' } }));
+  const revived = new StateEngine();
+  revived.load(JSON.parse(JSON.stringify(e.all())), T0);
+  assert.equal(revived.get('a')!.appSessionId, 'cse_01ABC');
+});

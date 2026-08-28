@@ -71,6 +71,13 @@ export type EventDetail = {
   pendingTool?: string;
   /** Working directory. The class discriminator: /home/claude means Cowork. */
   cwd?: string;
+  /**
+   * The Claude app's OWN id for this conversation, e.g. `cse_01NKo9Gg…`.
+   * Arrives as a header, not in the payload — the plugin substitutes
+   * `${CLAUDE_CODE_REMOTE_SESSION_ID}` into it via `allowedEnvVars`.
+   * This is what makes click-to-jump open the actual thread.
+   */
+  appSessionId?: string;
 };
 
 /**
@@ -119,6 +126,8 @@ export type Thread = {
   errorText?: string;
   pendingTool?: string;
   cwd?: string;
+  /** The Claude app's id for this conversation. Enables real click-to-jump. */
+  appSessionId?: string;
   /** Task list state, if the thread uses one. */
   tasks: { created: string[]; completed: string[]; lastLabel?: string };
   /** Tool calls completed this turn — the honest step counter. */
@@ -146,6 +155,8 @@ export type TileView = {
   progress: Progress;
   progressLabel: string;
   canAcknowledge: boolean;
+  /** True when clicking will open the exact thread rather than just focusing. */
+  canOpenDirectly: boolean;
   children: TileView[];
 };
 

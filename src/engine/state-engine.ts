@@ -206,6 +206,7 @@ export class StateEngine {
   private applyDetail(thread: Thread, ev: ThreadEvent): void {
     const d = ev.detail;
     if (d.cwd) thread.cwd = d.cwd;
+    if (d.appSessionId) thread.appSessionId = d.appSessionId;
     if (d.activity) thread.activity = d.activity;
     if (d.finalMessage) thread.finalMessage = d.finalMessage;
 
@@ -265,6 +266,7 @@ export class StateEngine {
       lastEventAt: ev.ts,
       seq: 0,
       cwd: ev.detail.cwd,
+      appSessionId: ev.detail.appSessionId,
       tasks: { created: [], completed: [] },
       stepCount: 0,
       acknowledged: false,

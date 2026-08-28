@@ -204,3 +204,32 @@ test('end to end: a full session arrives over HTTP and lands as one DONE tile', 
     assert.equal(t.source, 'cowork-hook');
   });
 });
+
+test('the app session id is read from its header and reaches the event', async () => {
+  // This is what makes click-to-jump open the actual thread. The id cannot
+  // come from the payload — it is not in it. The plugin substitutes
+  // ${CLAUDE_CODE_REMOTE_SESSION_ID} into a header via allowedEnvVars.
+  await withServer(async (base, events) => {
+    await post(
+      base,
+      { hook_event_name: 'Stop', session_id: SID, cwd: '/home/claude' },
+      { ...AUTH, 'x-claude-session': 'cse_01NKo9Gg3jGjRFMMJHh9kNWX' },
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(events[0]!.detail.appSessionId, 'cse_01NKo9Gg3jGjRFMMJHh9kNWX');
+  });
+});
+
+test('an unsubstituted placeholder is ignored rather than stored as an id', async () => {
+  // If a session lacks the variable, the hook sends the literal "${...}".
+  // Storing that would produce a tile that claims it can be opened and cannot.
+  await withServer(async (base, events) => {
+    await post(
+      base,
+      { hook_event_name: 'Stop', session_id: SID },
+      { ...AUTH, 'x-claude-session': '${CLAUDE_CODE_REMOTE_SESSION_ID}' },
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(events[0]!.detail.appSessionId, undefined);
+  });
+});

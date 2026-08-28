@@ -165,6 +165,42 @@ The lead: cloud Cowork sessions carry a first-party "Claude Code Remote" MCP ser
 
 ## Q4 — Deep link to an existing thread
 
+> # ⚠️ THIS ANSWER WAS WRONG. CORRECTED 2026-08-28 (Phase 1).
+>
+> **A deep link to an existing thread DOES exist, and it works.**
+>
+> ```
+> claude://claude.ai/code/session_<id>      opens a Cowork thread
+> claude://claude.ai/chat/<uuid>            opens a conversation
+> claude://claude.ai/project/<uuid>         opens a project
+> ```
+>
+> Confirmed live: opening the first form with a real id brought the Claude app
+> forward showing that exact thread. Click-to-jump — described in the brief as
+> "the whole MVP requirement" — is delivered, not degraded.
+>
+> **How the original answer went wrong, because the method matters more than
+> the outcome.** Probe 6 fired six `claude://` variants, got nothing from any of
+> them, and recorded a documented negative. Every one of the six was malformed:
+> they omitted the `claude.ai` host segment the route requires. Six failures of
+> the same syntax error were read as evidence of absence.
+>
+> The evidence was on disk the whole time. `/Applications/Claude.app` is an
+> Electron app; its deep-link route table is readable in the bundle. Reading it
+> took one command and produced the complete list of ~20 routes — including
+> `OpenConversation: 'chat'` and `Code: 'code'` — where guessing had produced
+> six wrong URLs and a false conclusion.
+>
+> **The rule this should have followed:** when probing a local application for a
+> capability, read what it accepts before guessing at what it accepts. A
+> negative from guesswork is not a negative; it is an absence of evidence, and
+> the brief's own Rule 1 ("verify before you build") was not met by six guesses.
+>
+> The operator had stated that click-through was his main reason for wanting the
+> product. A wrong negative on that specific question was the most costly error
+> available in this project, and it survived a whole phase because the finding
+> was written with more confidence than its evidence supported.
+
 **Desk verdict: negative, confirmed.** https://code.claude.com/docs/en/deep-links documents `claude-cli://open` as "the only path the handler accepts," with `q`, `cwd`, `repo` params, launching a *new* terminal session; the handler registers at `~/Applications/Claude Code URL Handler.app`. Nothing opens an existing conversation by ID. The click-to-jump fallback (focus app + clipboard + honest UI copy) is the plan of record.
 
 **LIVE PROBE, ENUMERATION COMPLETE (Probe 6 step 1, 2026-08-28). One undocumented scheme found — worth testing, not worth hoping for.**
@@ -203,6 +239,35 @@ An exit code of 0 is **not** evidence of success here — macOS `open` returns 0
 `claude-cli://open?cwd=…` was deliberately **not** fired: it is documented to launch a new terminal session, which would have spawned a stray Claude Code process mid-probe. Its behaviour is documented and not architecture-shaping — it is only relevant to local Claude Code tiles, where Phase 2 can test it in isolation.
 
 ## Q5 — Thread identity across sources
+
+> ### PARTIALLY SUPERSEDED — 2026-08-28 (Phase 1)
+>
+> The conclusion below ("no mapping is obtainable") is **wrong**, though for a
+> subtler reason than Q4.
+>
+> The hunt asked: can the HUD obtain the `cse_` id? It searched the payloads,
+> the transcript paths, and the container's filesystem, and found nothing —
+> all correct. What it never checked was the container's **environment**, where
+> the id sits in plain view:
+>
+> ```
+> CLAUDE_CODE_REMOTE_SESSION_ID = cse_01NKo9Gg3jGjRFMMJHh9kNWX
+> ```
+>
+> And Claude Code hooks support `allowedEnvVars`, which substitutes an
+> environment variable into a hook's **headers** (verified live — substitution
+> works in headers, not in the URL). So every Cowork event can carry its own
+> app-level id, and the HUD learns the mapping for free.
+>
+> The in-session probe that "exhausted" this searched files and greps but was
+> told to look for credentials-adjacent things carefully, and `env` was checked
+> only for variable *names* matching `conv|uuid|thread|chat` — which
+> `CLAUDE_CODE_REMOTE_SESSION_ID` does not match. The answer was one grep
+> pattern away and was declared exhausted instead.
+>
+> What remains true below: the three identifier namespaces are genuinely
+> distinct, and no arithmetic converts one into another. The mapping is
+> *transported*, not computed.
 
 **Desk verdict: better than hoped.** `prompt_id` in hook payloads is documented as matching OTel's `prompt.id`; both paths carry a session identifier (`session_id` / `session.id`). Observed live: the cloud session's `session_id` is the same UUID used in its uploads path and transcript filename — one identifier threads through the whole platform. Tile identity = `session_id`; tile title derives from the first `UserPromptSubmit` prompt (truncated), since no API exposes the sidebar's display name.
 

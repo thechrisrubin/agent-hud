@@ -207,22 +207,45 @@ ipcMain.handle('hud:toggle-on-top', () => {
 });
 
 /**
- * Click-to-jump. Focuses the Claude app and copies the thread's TITLE.
+ * Click-to-jump. Opens the exact thread in the Claude app.
  *
- * It copies the title, not the thread id, because the id the HUD receives is
- * meaningless to the Claude app — they are unrelated identifier namespaces
- * (PHASE0-FINDINGS Q5). Pasting the id into the app's search would find
- * nothing. The title is the one handle both sides genuinely share.
+ * The route is `claude://claude.ai/code/session_<id>`, read out of the app's
+ * own deep-link table and confirmed live on 2026-08-28. Phase 0 recorded this
+ * as impossible; that was wrong — six guessed URL formats had all omitted the
+ * `claude.ai` host segment, and the failures were read as absence of the
+ * capability rather than malformed input.
+ *
+ * The id comes from CLAUDE_CODE_REMOTE_SESSION_ID inside the Cowork session,
+ * forwarded by the plugin as a header. It arrives prefixed `cse_`; the app's
+ * URL form is `session_`. Same value, different prefix.
+ *
+ * Threads captured before the plugin carried that header have no id, so the
+ * old focus-and-copy behaviour remains as the fallback — and says so plainly
+ * rather than looking like a failed click.
  */
+function appUrlFor(appSessionId: string): string {
+  const suffix = appSessionId.replace(/^cse_/, '');
+  return `claude://claude.ai/code/session_${suffix}`;
+}
+
 ipcMain.handle('hud:jump', async (_e, threadId: string) => {
   const t = engine.get(threadId);
   if (!t) return { ok: false, message: 'That thread is no longer being tracked.' };
+
+  if (t.appSessionId) {
+    try {
+      await shell.openExternal(appUrlFor(t.appSessionId));
+      return { ok: true, message: 'Opened in Claude.' };
+    } catch {
+      // Fall through to the copy behaviour rather than leaving a dead click.
+    }
+  }
 
   if (t.source === 'claude-code-local') {
     clipboard.writeText(t.cwd ?? t.title);
     return {
       ok: true,
-      message: 'Copied this session’s folder. Direct navigation isn’t possible for terminal sessions.',
+      message: 'Copied this session’s folder — terminal sessions can’t be opened directly.',
     };
   }
 
@@ -230,13 +253,11 @@ ipcMain.handle('hud:jump', async (_e, threadId: string) => {
   try {
     await shell.openExternal('claude://');
   } catch {
-    // The scheme is registered (verified 2026-08-28), but if the app is gone
-    // the copy still happened and the operator still gets something useful.
     return { ok: true, message: 'Copied the thread name. Couldn’t bring the Claude app forward.' };
   }
   return {
     ok: true,
-    message: 'Claude is in front and the thread name is copied — paste it into search to open it.',
+    message: 'Claude is in front and the name is copied — this thread started before direct opening was set up.',
   };
 });
 

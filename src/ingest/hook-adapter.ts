@@ -136,6 +136,11 @@ function activityFor(kind: EventKind, p: RawHookPayload): string | undefined {
 }
 
 export type AdaptOptions = {
+  /**
+   * The Claude app's conversation id, read from the X-Claude-Session header.
+   * Not part of the payload — see the header note on EventDetail.appSessionId.
+   */
+  appSessionId?: string;
   /** Routine slugs from ~/Documents/Claude/Scheduled. Used for filtering. */
   routineSlugs?: ReadonlySet<string>;
   hideRoutines?: boolean;
@@ -216,6 +221,7 @@ export function adaptHookPayload(p: RawHookPayload, opts: AdaptOptions = {}): Ad
       agentType: p.agent_type,
       pendingTool: p.tool_name,
       cwd: p.cwd,
+      appSessionId: opts.appSessionId,
     },
   };
 

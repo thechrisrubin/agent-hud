@@ -76,6 +76,7 @@ function toTile(t: Thread, nowMs: number, children: TileView[]): TileView {
     progress: progressFor(t),
     progressLabel: progressLabelFor(t, nowMs),
     canAcknowledge: t.state === 'DONE' || t.state === 'ERROR',
+    canOpenDirectly: Boolean(t.appSessionId),
     children,
   };
 }

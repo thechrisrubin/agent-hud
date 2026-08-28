@@ -46,6 +46,15 @@ export type IngestOptions = {
   onLog?: (line: string) => void;
 };
 
+/** Headers can arrive as string[]; an unsubstituted `${VAR}` is not a value. */
+function headerValue(v: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(v) ? v[0] : v;
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.includes('${')) return undefined;
+  return trimmed;
+}
+
 function secretMatches(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
@@ -134,9 +143,16 @@ export class IngestServer {
         return;
       }
 
+      // The Claude app's conversation id rides in a header, not the body:
+      // the plugin substitutes ${CLAUDE_CODE_REMOTE_SESSION_ID} into it via
+      // `allowedEnvVars`. Verified live — allowedEnvVars substitutes into
+      // headers only, not into the URL.
+      const appSessionId = headerValue(req.headers['x-claude-session']);
+
       const result = adaptHookPayload(payload, {
         hideRoutines: this.opts.hideRoutines,
         routineSlugs: this.opts.routineSlugs,
+        appSessionId,
       });
 
       if (!result.ok) {
