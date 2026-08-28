@@ -12,10 +12,12 @@ Probe scoreboard:
 | 3 — plugin build + install | Q1 setup | **Done.** Validated, hooks proven to fire, installed into Cowork via "Upload plugin". |
 | 4 — the Q1 verdict | Q1, Q6 | **Done. YES** — 5 Cowork sessions, 5 delivered. |
 | 5 — plan tier | Q2 | **Done. NO** — no org admin access. Path B unavailable. |
-| 6 — deep links | Q4 | **Done. NO** existing-thread deep link; `claude://` focuses the app. |
-| 7 — identity lineup | Q5 | **Done. NO** — three unrelated ID namespaces. |
+| 6 — deep links | Q4 | ~~NO~~ → **WRONG, corrected in Phase 1. A deep link exists and works:** `claude://claude.ai/code/session_<id>`. |
+| 7 — identity lineup | Q5 | ~~NO~~ → **partially wrong.** The namespaces are distinct, but the app's id is in the container's env and hooks can forward it. |
 
-**Headline: Path A works everywhere and is the whole architecture. Path B is gone. Two desk conclusions were overturned by live evidence** — where Cowork sessions execute (Q9) and whether thread identity is shared across surfaces (Q5). Both are corrected in place below, with the superseded reasoning retained.
+**Headline: Path A works everywhere and is the whole architecture. Path B is gone.**
+
+**Four conclusions in this document were later overturned. Read the corrections before trusting any negative here.** Two were overturned by the live probes themselves (Q9, where Cowork sessions execute; Q5, thread identity). Two more — **Q4 and Q5 again** — were overturned during Phase 1, and those two matter most: both were *false negatives on the operator's primary use case*, click-to-jump. Each was produced by guessing at an interface instead of reading it, and each was written up with more confidence than its evidence supported. The corrections are inline, marked, with the original reasoning retained.
 
 **One process note worth recording.** Starting the Cloudflare tunnel was refused by Claude Code's own safety classifier — publishing a local port to the internet is exactly what it exists to stop an agent doing unilaterally. CR had approved it; the classifier cannot know that. He started it himself with one line. Expect the same in Phase 1 when the named tunnel goes up, and design the installer so CR runs the network-exposing step knowingly rather than having an agent do it quietly. That is the right division of authority, not an obstacle to route around.
 
