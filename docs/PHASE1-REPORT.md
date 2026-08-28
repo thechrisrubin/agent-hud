@@ -137,3 +137,47 @@ Had Tailscale not set the header, every request through CR's new public address 
 **Only the acceptance test itself.** The plugin is built (`~/Desktop/agent-hud.zip`) with the live address and secret embedded, and validated by `claude plugin validate`. What remains is CR uploading it and starting a Cowork thread.
 
 Everything between that thread and a tile on screen has now been exercised with real traffic — the transport by the reachability probe, the adapter and engine by replaying all 450 captured Cowork payloads. The one thing never observed end to end is a genuine Cowork session reaching *this* address through *this* plugin. Phase 0 proved Cowork can reach an arbitrary tunnel hostname; this is the same mechanism pointed at a different host.
+
+---
+
+# Addendum 2 — Cowork verified end to end (2026-08-28)
+
+**The core requirement of the whole build now works on real traffic.** A thread started in Cowork ran in Anthropic's cloud, delivered its hooks across the public internet to the Mac, authenticated, and rendered as a live tile.
+
+```
+title    : Run `echo hud-live` in bash, then tell me it worked.
+source   : cowork-hook            cwd: /home/claude
+state    : DONE                   steps: 1
+final    : It worked — output was `hud-live`.
+history  : WORKING(prompt_submitted) -> DONE(turn_finished)
+```
+
+Blue while working, bright green when finished, captioned with what it actually produced. Sticky.
+
+## A wrong diagnosis, recorded because the reasoning is the useful part
+
+When the first Cowork thread produced nothing, I concluded the likely cause was Anthropic's cloud egress refusing `.ts.net` — reasoning from the Phase 0 finding that cloud egress is allowlist-shaped, and from the fact that the only two things changed since the working Phase 0 configuration were the hostname and the added auth header.
+
+**That was wrong, and the method that found it wrong is worth keeping.** Rather than act on the hypothesis, each changed variable was isolated:
+
+- *Was it the header?* Tested locally with a plugin carrying the same header. 5 events accepted, 0 rejected — headers are sent and honoured. Ruled out, at no cost to CR.
+- *Was it the address?* Tested by fetching the public URL from Anthropic's own network. It answered. Ruled out.
+
+Both eliminated, the real cause surfaced from the data: the first thread delivered **exactly one event, `SessionEnd`** — the signature of a session whose plugin registered mid-flight. Nothing was broken. The thread simply predated the plugin.
+
+The lesson for whoever maintains this: an ingest failure has three candidate layers (address, auth, hook execution) and each can be tested in isolation without the others. The counters distinguish them directly — `rejected > 0` means auth, `accepted == 0` with a reachable `/health` means hooks, and an unreachable `/health` means the address.
+
+## Two title gaps found by real use, not by tests
+
+Both produced tiles reading "Untitled thread", which reads like a bug rather than a fact.
+
+1. **`agent_type` is usually empty.** 8 of the 9 subagent events captured in Phase 0 carried `''`, local sessions included — only a paired SubagentStart/Stop names the agent reliably. Subagents are now titled `subagent` from the parent relationship alone, which is always present.
+2. **A Cowork thread joined mid-flight has no name anywhere.** Every Cowork session reports `cwd=/home/claude` and no other field carries a title. Local sessions fall back to their folder name; Cowork has no equivalent. Such tiles now read **"Claude thread"** and upgrade to the real title on the operator's next message in that thread.
+
+Worth noting what this exposed about the design: automatic discovery works — CR's other Cowork threads began appearing on their own, with no registration, exactly as brief §8 requires. The gap was never discovery; it was that a discovered thread had nothing to call itself.
+
+## Outstanding for formal acceptance
+
+- **A thread started from CR's phone.** Untested. Same cloud class as the verified desktop case, so expected to behave identically — but the brief names it specifically, and it is the case that justified building a relay at all.
+- **Acknowledging a tile, observed by CR.** Covered by tests and by the projection layer; not yet confirmed by the person it exists for.
+- **The eight-hour soak** (§9) and **grid density at 100+ tiles**. Both need a real working day.
