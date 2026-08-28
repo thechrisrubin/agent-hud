@@ -222,3 +222,42 @@ Full Claude coverage, notifications in daily use, idle/stale filtering under rea
 2. **Subagent acknowledgement cascade**, above.
 
 The known limitation stands unchanged: routine filtering is best-effort, because a scheduled run is payload-identical to an interactive thread. Some routine tiles will leak through.
+
+---
+
+# Addendum 3 — click-to-jump works (2026-08-28)
+
+**Verified by CR on a live Cowork thread: clicking a tile opens that thread in the Claude app.**
+
+The brief calls this "the whole MVP requirement" (§5) and CR named it as his main reason for wanting the product. Phase 0 recorded it as impossible. That was wrong twice over, and both errors were the same mistake in different clothes.
+
+## The chain, end to end
+
+```
+Cowork session
+ └ env CLAUDE_CODE_REMOTE_SESSION_ID = cse_01D8DAge…
+    └ plugin hook header  X-Claude-Session   (allowedEnvVars substitutes into HEADERS, not the url)
+       └ HUD stores it on the tile
+          └ click → claude://claude.ai/code/session_01D8DAge…
+             └ that exact thread opens
+```
+
+Every link verified live.
+
+## How the false negatives happened
+
+**Q4 (no deep link).** Six `claude://` variants were fired and all failed. Every one omitted the `claude.ai` host segment the route requires. Six instances of one syntax error were recorded as absence of the capability. The app is Electron and its complete route table — ~20 routes including `OpenConversation: 'chat'` and `Code: 'code'` — was readable in its bundle with one command.
+
+**Q5 (no id mapping).** The hunt searched payloads, transcript paths, and the container's filesystem, then declared itself exhausted. It never checked the environment, where the id sits in plain view. The in-session probe did grep `env` — but only for names matching `conv|uuid|thread|chat`, which `CLAUDE_CODE_REMOTE_SESSION_ID` does not match.
+
+**The common failure: treating "I could not find it" as "it is not there", and writing it up with more confidence than the evidence carried.** Both negatives were about the operator's primary use case, and both survived a full phase because they were recorded as settled rather than as unsuccessful searches.
+
+**The rule that would have caught both:** when probing a local application, read what it accepts before guessing at what it accepts. A negative derived from guesswork is not a negative — it is an absence of evidence, and it should be written up as such.
+
+## Still open: thread names
+
+Tiles show prompt text; CR wants the name the Claude app's sidebar shows. The local half works (Claude Code writes an `ai-title` record into each transcript, and the HUD reads it). The Cowork half does not: the transcript lives inside Anthropic's container, and the `command` hook written to read it there produced **no POST at all** — zero accepted, zero rejected, zero ignored.
+
+Two candidate causes, not yet distinguished: the Cowork harness may not execute plugin `command` hooks, or it may execute them while the container blocks a subprocess's outbound connection. Phase 0 observed exactly that asymmetry — agent-level network calls blocked while harness-fired hooks passed.
+
+Worth stating plainly given the history above: **this is an unsuccessful search, not a proven impossibility.**
