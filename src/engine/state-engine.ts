@@ -68,8 +68,10 @@ function deriveTitle(ev: ThreadEvent): string {
     const oneLine = ev.detail.promptText.replace(/\s+/g, ' ').trim();
     return oneLine.length > TITLE_MAX ? oneLine.slice(0, TITLE_MAX - 1) + '…' : oneLine;
   }
-  // Cowork subagents report an EMPTY agent_type (observed live — local ones
-  // send "general-purpose"), so this must not rely on the field being useful.
+  // `agent_type` is frequently an empty string on SubagentStop, in BOTH
+  // classes — 8 of the 9 subagent events captured in Phase 0 carried '',
+  // including local ones. Only a paired SubagentStart/Stop reliably names the
+  // agent. So the field can inform a title but must never be required for one.
   const agentType = ev.detail.agentType?.trim();
   if (agentType) return `subagent · ${agentType}`;
   if (ev.parentThreadId) return 'subagent';
