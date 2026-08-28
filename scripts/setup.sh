@@ -131,7 +131,9 @@ if [ -z "$TUNNEL" ]; then
   info "cloud, even the ones you start on your laptop. For them to reach the HUD,"
   info "your Mac needs a web address. That's what the tunnel does."
   info ""
-  info "When you're ready, run:   bash scripts/setup-tunnel.sh"
+  info "When you're ready, run this in a normal Terminal window:"
+  info "  bash scripts/setup-tailscale.sh      (no domain needed - recommended)"
+  info "  bash scripts/setup-tunnel.sh         (if you have a domain on Cloudflare)"
 else
   bash "$ROOT/scripts/make-plugin.sh"
 fi
@@ -141,5 +143,5 @@ info "Start the HUD with:   npm start"
 info ""
 info "Right now it will show threads from Claude Code sessions on this Mac."
 if [ -z "$TUNNEL" ]; then
-  info "Cowork and phone threads will appear once you've run setup-tunnel.sh."
+  info "Cowork and phone threads will appear once you've given this Mac a web address."
 fi
