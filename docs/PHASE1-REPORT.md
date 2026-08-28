@@ -1,6 +1,8 @@
 # Phase 1 report — Agent HUD
 
-**Status: built, tested, and running. One acceptance criterion is not yet met and needs CR (the tunnel). 2026-08-28.**
+**Status: built, tested, and running. The public ingest address is live. The only step outstanding is CR uploading the plugin and starting a Cowork thread. 2026-08-28.**
+
+*Read the addendum at the foot of this file alongside the report — three things changed on the same day and it supersedes them in place.*
 
 ---
 
@@ -66,7 +68,7 @@ Delivered against the brief:
 ## ASSUMPTIONS I MADE
 
 1. **Cowork sessions can be identified by `cwd === '/home/claude'`.** True in all five captured sessions, but it is a convention, not a guarantee.
-2. **`X-Forwarded-For` is trustworthy as a "not local" signal.** Anything arriving through cloudflared carries it, and a remote caller cannot remove it. A *local* process could forge it, but that only costs it the secret it would then need.
+2. ~~**`X-Forwarded-For` is trustworthy as a "not local" signal.**~~ **WITHDRAWN the same day.** The design no longer depends on it at all — every request needs the secret. See addendum §2 for why the original assumption was unsafe even though it turned out to hold.
 3. **Answering hooks with 200 immediately is correct** even when the event is later discarded. Hooks sit on the critical path of CR's own sessions; a slow endpoint would make Claude feel broken. Losing a tile is the cheaper failure.
 4. **Prompt text may be held in memory and written to `~/.agent-hud/state.json`** to title tiles. It never leaves the machine. If CR wants titles off, that is a one-line change.
 
@@ -74,17 +76,17 @@ Delivered against the brief:
 
 1. **Routine filtering will leak.** This is the one place the build cannot honour a decision CR made. He asked for scheduled routines to be excluded; a scheduled run captured live is **payload-identical to an interactive thread** — same fields, same `cwd`. The filter catches routines whose `cwd` is local, or whose prompt names them, and nothing else. Some routine tiles will appear. The probe that established this fired a one-off scheduled task rather than one of his 21 real routines, so it is still possible real routines carry something distinguishing — worth thirty seconds of checking the first time one leaks through.
 2. **The single-path risk, unchanged from Phase 0.** Hooks are the only ingest route and Q2 removed the fallback. If Anthropic stops executing plugin hooks in Cowork, every Cowork tile disappears at once. The HUD says so honestly rather than showing a calm empty grid, but it cannot work around it.
-3. **The tunnel is the weakest operational link.** A quick tunnel dies on its own; a named tunnel depends on CR's Cloudflare account staying set up. If the address dies while the plugin is installed, every Cowork session pays a 5-second timeout per event — noticeable, and the reason `setup.sh` refuses to build a plugin without an address.
+3. **The address is the weakest operational link.** It stays alive only while the Tailscale app is running — it launches at login by default, but if CR ever quits it, every Cowork session pays a 5-second timeout per event and all Cowork tiles stop. That is noticeable rather than silent, and it is why `setup.sh` refuses to build a plugin without an address.
 4. **Grid density at his real scale is untested.** He has 121 pinned threads. The grid has been tested with seven tiles.
 
 ## NEXT PHASE — GO / NO-GO
 
 **Phase 1 is functionally complete but not accepted.** The brief's acceptance test — three Cowork threads, one from his phone, all appearing within five seconds — cannot run until the tunnel exists. Everything on the HUD side of that boundary is built and verified.
 
-**To accept Phase 1, in order:**
+**To accept Phase 1** — steps 1 and 2 are now done (see addendum):
 
-1. `bash scripts/setup-tunnel.sh` — needs a domain on Cloudflare.
-2. `bash scripts/make-plugin.sh` — builds the signed plugin.
+1. ~~Give the Mac a public address~~ — done, via Tailscale.
+2. ~~`bash scripts/make-plugin.sh`~~ — done; `~/Desktop/agent-hud.zip` carries the live address and secret.
 3. Install it in the Claude app via **Upload plugin**.
 4. Start three threads, one from the phone. Watch them appear, finish, go green, and clear when acknowledged.
 
