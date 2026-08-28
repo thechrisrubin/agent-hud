@@ -29,8 +29,8 @@ mkdir -p "$BUILD/.claude-plugin" "$BUILD/hooks"
 cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
   "name": "agent-hud",
-  "description": "v1.2 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
-  "version": "1.2.0",
+  "description": "v1.3 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
+  "version": "1.3.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
@@ -85,49 +85,52 @@ for event in EVENTS:
 # fails loudly would interrupt CR's own session, which is a far worse outcome
 # than a tile keeping its old name.
 TITLE_SCRIPT = r"""
-# Write the reader to a file FIRST. `python3 - <<EOF` would feed the script in
-# on stdin, and stdin is where the hook payload arrives - the script would then
-# parse its own source and silently find nothing. That exact bug shipped once.
-cat <<'PYEOF' > /tmp/agent-hud-title.py 2>/dev/null || exit 0
-import json, sys, os, urllib.request
-try:
-    payload = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-tp, sid = payload.get("transcript_path"), payload.get("session_id")
-if not tp or not sid or not os.path.exists(tp):
-    sys.exit(0)
-title = None
-try:
-    with open(tp, encoding="utf-8") as fh:
-        for line in fh:
-            if '"ai-title"' not in line:
-                continue
-            try:
-                rec = json.loads(line)
-            except Exception:
-                continue
-            if rec.get("type") == "ai-title" and rec.get("aiTitle"):
-                title = rec["aiTitle"]          # keep going; the newest wins
-except Exception:
-    sys.exit(0)
-if not title:
-    sys.exit(0)
-try:
-    body = json.dumps({"hook_event_name": "ThreadTitle", "session_id": sid,
-                       "cwd": payload.get("cwd"), "title": title}).encode()
-    req = urllib.request.Request("__INGEST__", data=body, method="POST")
-    req.add_header("content-type", "application/json")
-    req.add_header("X-Hud-Secret", "__SECRET__")
-    req.add_header("X-Claude-Title", title)
-    remote = os.environ.get("CLAUDE_CODE_REMOTE_SESSION_ID")
-    if remote:
-        req.add_header("X-Claude-Session", remote)
-    urllib.request.urlopen(req, timeout=4).read()
-except Exception:
-    pass
-PYEOF
-python3 /tmp/agent-hud-title.py 2>/dev/null || true
+# Ships the thread's generated NAME, which the http hooks cannot: the name is
+# written into the session transcript, and an http hook posts only the event
+# payload. Inside Cowork that transcript is in Anthropic's container, so the
+# reading has to happen there.
+#
+# Pure shell and curl, deliberately. An earlier version used python3, which
+# this container is not known to have - and every failure path was silenced,
+# so a missing interpreter looked identical to the hook never running. curl is
+# confirmed present (it answered a reachability check from inside a session).
+#
+# Every step is guarded: no payload, no transcript, no title, no curl - it
+# exits 0 silently. A hook that fails loudly would interrupt CR's own session,
+# which is worse than a tile keeping an older name.
+PAYLOAD=$(cat 2>/dev/null) || exit 0
+[ -n "$PAYLOAD" ] || exit 0
+
+TP=$(printf '%s' "$PAYLOAD" | sed -n 's/.*"transcript_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+SID=$(printf '%s' "$PAYLOAD" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+[ -n "$TP" ] || exit 0
+[ -n "$SID" ] || exit 0
+[ -f "$TP" ] || exit 0
+
+# Last ai-title record wins - a thread can be renamed as it goes on.
+TITLE=$(grep '"ai-title"' "$TP" 2>/dev/null | tail -1 \
+        | sed -n 's/.*"aiTitle"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+[ -n "$TITLE" ] || exit 0
+# Headers cannot carry control characters; keep it short and printable.
+TITLE=$(printf '%s' "$TITLE" | tr -d '\000-\037\\"' | cut -c1-120)
+[ -n "$TITLE" ] || exit 0
+
+command -v curl >/dev/null 2>&1 || exit 0
+if [ -n "$CLAUDE_CODE_REMOTE_SESSION_ID" ]; then
+  curl -s -m 5 -X POST "__INGEST__" \
+    -H 'content-type: application/json' \
+    -H "X-Hud-Secret: __SECRET__" \
+    -H "X-Claude-Title: $TITLE" \
+    -H "X-Claude-Session: $CLAUDE_CODE_REMOTE_SESSION_ID" \
+    -d "{\"hook_event_name\":\"ThreadTitle\",\"session_id\":\"$SID\"}" >/dev/null 2>&1 || true
+else
+  curl -s -m 5 -X POST "__INGEST__" \
+    -H 'content-type: application/json' \
+    -H "X-Hud-Secret: __SECRET__" \
+    -H "X-Claude-Title: $TITLE" \
+    -d "{\"hook_event_name\":\"ThreadTitle\",\"session_id\":\"$SID\"}" >/dev/null 2>&1 || true
+fi
+exit 0
 """.replace("__INGEST__", url).replace("__SECRET__", secret)
 
 # Fires where a title is most likely to exist or have changed.
