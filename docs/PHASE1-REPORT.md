@@ -181,3 +181,44 @@ Worth noting what this exposed about the design: automatic discovery works — C
 - **A thread started from CR's phone.** Untested. Same cloud class as the verified desktop case, so expected to behave identically — but the brief names it specifically, and it is the case that justified building a relay at all.
 - **Acknowledging a tile, observed by CR.** Covered by tests and by the projection layer; not yet confirmed by the person it exists for.
 - **The eight-hour soak** (§9) and **grid density at 100+ tiles**. Both need a real working day.
+
+---
+
+# PHASE 1 ACCEPTED — 2026-08-28
+
+The brief's acceptance test (§7) passed on real traffic, on CR's machine, with his own threads.
+
+> *"The operator starts three Cowork threads — at least one of them from his phone — and all three appear within five seconds with correct states; one finishing turns bright green and stays green until acknowledged; acknowledging removes it."*
+
+| Requirement | Evidence |
+|---|---|
+| Cowork threads appear | 5 Cowork threads tracked, `cwd=/home/claude`, arriving via Tailscale from Anthropic's cloud |
+| **At least one from his phone** | `"Starting a new thread from my phone…"` — `WORKING(prompt_submitted) → DONE(turn_finished)` |
+| Correct states | Blue while working, bright green on `Stop`, captioned with the real final message |
+| Green stays green | `SessionEnd` arrives ~180ms after `Stop` and does not downgrade it — the sticky-`DONE` guard, verified in production rather than only in tests |
+| Acknowledging removes it | 4 tiles cleared by CR, including a Cowork thread. Held as acknowledged rather than deleted, so a late event cannot resurface them |
+| Within five seconds | Tiles appeared during the same interaction; latency not separately instrumented — see below |
+
+Also delivered this phase: the relay (§4.2, required for day-one cloud scope), the state engine with 65 tests, the Electron HUD, persistence across restarts, the one-command installer, the README written for CR, and the updated Claude Code onboarding page.
+
+## Honest qualifications on the acceptance
+
+- **The five-second bound was not measured.** Tiles appeared promptly in observed use, but no timing instrumentation exists. If it matters, it should be measured rather than assumed.
+- **Three threads were not started simultaneously.** Five arrived across the session, one from the phone. The spirit of the test — multiple concurrent threads, correctly distinguished — held, but a genuine three-at-once burst was not exercised.
+- **The grid has never held more than a dozen tiles.** CR's real working set is 121 pinned threads. Density remains the least-tested part of the product.
+- **The eight-hour soak (§9) has not run.**
+
+## One design question raised by real use
+
+Subagents nest under their parent, per §5. But when a parent tile is acknowledged and cleared, its subagents are *promoted* to the top level rather than leaving with it — a consequence of the rule that an orphaned subagent should be shown rather than dropped, written to avoid losing tiles.
+
+In practice this produced nine standalone `subagent` tiles from a single session. The rule is defensible in isolation and wrong in aggregate. **Recommended for Phase 2: a subagent whose parent has been acknowledged is acknowledged with it.** Flagged rather than changed, because the current behaviour follows the brief and the fix touches acknowledgement, which is load-bearing.
+
+## Phase 2 — GO
+
+Full Claude coverage, notifications in daily use, idle/stale filtering under real load. Two additions the evidence justifies:
+
+1. **An `ERROR`-only view of routines.** CR excluded routines for sound reasons, but with them hidden entirely a failed `daily-briefing` is silent. Showing a routine tile *only when a run fails* restores the safety net without the flood.
+2. **Subagent acknowledgement cascade**, above.
+
+The known limitation stands unchanged: routine filtering is best-effort, because a scheduled run is payload-identical to an interactive thread. Some routine tiles will leak through.
