@@ -1,0 +1,34 @@
+== Q4 active URL test ==
+run at: 2026-08-28T03:11:49Z
+session id under test: 4603d1d5-aa0e-53dc-8213-7679f4d76203
+
+URL      : claude://
+  exit   : 0
+  front  : "LSDisplayName"="Terminal"  ->  "LSDisplayName"="Claude"
+  RESULT : focus changed (something handled it)
+
+URL      : claude://open
+  exit   : 0
+  front  : "LSDisplayName"="Claude"  ->  "LSDisplayName"="Claude"
+  RESULT : accepted, no observable focus change
+
+URL      : claude://session/4603d1d5-aa0e-53dc-8213-7679f4d76203
+  exit   : 0
+  front  : "LSDisplayName"="Claude"  ->  "LSDisplayName"="Claude"
+  RESULT : accepted, no observable focus change
+
+URL      : claude://open?session=4603d1d5-aa0e-53dc-8213-7679f4d76203
+  exit   : 0
+  front  : "LSDisplayName"="Claude"  ->  "LSDisplayName"="Claude"
+  RESULT : accepted, no observable focus change
+
+URL      : claude://chat/4603d1d5-aa0e-53dc-8213-7679f4d76203
+  exit   : 0
+  front  : "LSDisplayName"="Claude"  ->  "LSDisplayName"="Claude"
+  RESULT : accepted, no observable focus change
+
+URL      : claude://cowork/4603d1d5-aa0e-53dc-8213-7679f4d76203
+  exit   : 0
+  front  : "LSDisplayName"="Claude"  ->  "LSDisplayName"="Claude"
+  RESULT : accepted, no observable focus change
+

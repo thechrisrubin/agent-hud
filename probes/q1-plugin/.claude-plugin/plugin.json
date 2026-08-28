@@ -1,0 +1,6 @@
+{
+  "name": "agent-hud-probe",
+  "description": "Phase 0 probe for the Agent HUD build: fires one HTTP POST per lifecycle event so we can verify which session classes (local CLI, desktop Cowork, cloud/mobile Cowork) can reach an ingest endpoint, and capture the real payload shape of every event. Carries no skills, reads nothing, stores nothing itself.",
+  "version": "0.1.0",
+  "author": { "name": "Agent HUD build team" }
+}

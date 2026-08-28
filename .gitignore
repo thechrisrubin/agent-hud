@@ -1,0 +1,65 @@
+# ── Agent HUD ─────────────────────────────────────────────────────────
+# NOTE: probes/captured/ is the Phase 0 evidence base. It is deliberately
+# TRACKED. Nothing below may exclude it — see the un-ignore rule at the end.
+
+# macOS / Box Drive noise
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+
+# Node / build output (Phase 1 will add these)
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
+
+# Secrets and local machine config — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keychain
+secrets.json
+.cloudflared/
+*.tunnel.json
+
+# Claude Code machine-local state (settings.json IS tracked; this is the
+# per-machine override file with local permission grants)
+.claude/settings.local.json
+.claude/local/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Scratch / transient runtime output
+tmp/
+.tmp/
+*.pid
+*.sock
+*.log
+
+# ── Evidence base: always tracked, overrides everything above ─────────
+!probes/captured/
+!probes/captured/**
