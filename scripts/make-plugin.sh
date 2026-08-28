@@ -29,8 +29,8 @@ mkdir -p "$BUILD/.claude-plugin" "$BUILD/hooks"
 cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
   "name": "agent-hud",
-  "description": "Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Sends only status events, never conversation content.",
-  "version": "1.0.0",
+  "description": "v1.1 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
+  "version": "1.1.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
