@@ -1,46 +1,4 @@
 {
-  "hooks": {
-    "SessionStart": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "UserPromptSubmit": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "PreToolUse": [
-      { "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "PostToolUse": [
-      { "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "PostToolUseFailure": [
-      { "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "PermissionRequest": [
-      { "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "Notification": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "TaskCreated": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "TaskCompleted": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "SubagentStart": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "SubagentStop": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "Stop": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "StopFailure": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ],
-    "SessionEnd": [
-      { "hooks": [{ "type": "http", "url": "http://127.0.0.1:43200/ingest/local", "timeout": 3 }] }
-    ]
-  }
+  "$comment": "Phase 0's probe hooks lived here and have been removed. Every Claude Code session on this Mac now reports to the HUD via ~/.claude/settings.json, which scripts/setup.sh writes with the ingest secret included. Project-level hooks could not carry the secret, because this file is committed to the repo and the secret is per-machine.",
+  "hooks": {}
 }

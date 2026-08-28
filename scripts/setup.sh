@@ -69,12 +69,13 @@ else
   echo '{}' > "$CLAUDE_SETTINGS"
 fi
 
-HUD_PORT="$PORT" python3 - "$CLAUDE_SETTINGS" <<'PY'
+HUD_PORT="$PORT" HUD_SECRET="$SECRET" python3 - "$CLAUDE_SETTINGS" <<'PY'
 import json, os, sys
 
 path = sys.argv[1]
-port = os.environ["HUD_PORT"]
-url  = f"http://127.0.0.1:{port}/ingest/local"
+port   = os.environ["HUD_PORT"]
+secret = os.environ["HUD_SECRET"]
+url    = f"http://127.0.0.1:{port}/ingest/local"
 
 # The 14 lifecycle events the HUD consumes. Each one was captured live during
 # Phase 0 except StopFailure and SessionStart — those are included defensively
@@ -106,7 +107,10 @@ for event in EVENTS:
     entries = [e for e in hooks.get(event, []) if not is_ours(e)]  # replace ours, keep theirs
     # A 3-second timeout means that if the HUD is closed, your Claude sessions
     # pause for at most 3 seconds per event and then carry on normally.
-    handler = {"type": "http", "url": url, "timeout": 3}
+    # The secret goes in the file so you never handle it. Every write to the
+    # HUD is authenticated, including this one - see src/ingest/server.ts.
+    handler = {"type": "http", "url": url, "timeout": 3,
+               "headers": {"X-Hud-Secret": secret}}
     entry = {"hooks": [handler]}
     if event in MATCHED:
         entry["matcher"] = "*"

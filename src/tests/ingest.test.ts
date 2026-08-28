@@ -37,6 +37,8 @@ async function withServer(
   }
 }
 
+const AUTH = { 'x-hud-secret': SECRET };
+
 const post = (base: string, body: unknown, headers: Record<string, string> = {}) =>
   fetch(`${base}/ingest/test`, {
     method: 'POST',
@@ -44,9 +46,14 @@ const post = (base: string, body: unknown, headers: Record<string, string> = {})
     body: JSON.stringify(body),
   });
 
-test('a loopback caller needs no secret — it is already on the machine', async () => {
+test('a local caller must present the secret too — there is no local exemption', async () => {
+  // The exemption used to exist and was removed: a tunnel daemon runs on this
+  // machine and proxies to loopback, so "local" is not a safe thing to trust.
   await withServer(async (base, events) => {
-    const res = await post(base, { hook_event_name: 'Stop', session_id: SID });
+    const bare = await post(base, { hook_event_name: 'Stop', session_id: SID });
+    assert.equal(bare.status, 401, 'no secret, no write — even from 127.0.0.1');
+
+    const res = await post(base, { hook_event_name: 'Stop', session_id: SID }, AUTH);
     assert.equal(res.status, 200);
     await new Promise((r) => setTimeout(r, 30));
     assert.equal(events.length, 1);
@@ -72,7 +79,7 @@ test('a forwarded request with the right secret is accepted', async () => {
     const res = await post(
       base,
       { hook_event_name: 'Stop', session_id: SID, cwd: '/home/claude' },
-      { 'x-forwarded-for': '34.135.11.159', 'x-hud-secret': SECRET },
+      { 'x-forwarded-for': '34.135.11.159', ...AUTH },
     );
     assert.equal(res.status, 200);
     await new Promise((r) => setTimeout(r, 30));
@@ -100,13 +107,13 @@ test('malformed and unknown payloads are shrugged off, not crashed on', async ()
   await withServer(async (base, events, server) => {
     const bad = await fetch(`${base}/ingest/x`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...AUTH },
       body: 'not json at all',
     });
     assert.equal(bad.status, 200, 'hooks are on the critical path — always answer fast');
 
-    await post(base, { hook_event_name: 'SomethingNew', session_id: SID });
-    await post(base, { hook_event_name: 'Stop' }); // no session_id
+    await post(base, { hook_event_name: 'SomethingNew', session_id: SID }, AUTH);
+    await post(base, { hook_event_name: 'Stop' }, AUTH); // no session_id
 
     await new Promise((r) => setTimeout(r, 40));
     assert.equal(events.length, 0);
@@ -131,9 +138,9 @@ test('a handler that throws does not take the listener down', async () => {
   const port = (server as any).server.address().port as number;
   const base = `http://127.0.0.1:${port}`;
   try {
-    await post(base, { hook_event_name: 'Stop', session_id: SID });
+    await post(base, { hook_event_name: 'Stop', session_id: SID }, AUTH);
     await new Promise((r) => setTimeout(r, 30));
-    const res = await post(base, { hook_event_name: 'Stop', session_id: SID });
+    const res = await post(base, { hook_event_name: 'Stop', session_id: SID }, AUTH);
     assert.equal(res.status, 200, 'still serving after a downstream failure');
     await new Promise((r) => setTimeout(r, 30));
     assert.equal(calls, 2);
@@ -144,7 +151,7 @@ test('a handler that throws does not take the listener down', async () => {
 
 test('health reports what has been received', async () => {
   await withServer(async (base) => {
-    await post(base, { hook_event_name: 'Stop', session_id: SID });
+    await post(base, { hook_event_name: 'Stop', session_id: SID }, AUTH);
     await new Promise((r) => setTimeout(r, 30));
     const res = await fetch(`${base}/health`);
     const body = (await res.json()) as { ok: boolean; accepted: number };
@@ -156,11 +163,15 @@ test('health reports what has been received', async () => {
 test('routine filtering is counted separately so it is visible, not silent', async () => {
   await withServer(
     async (base, events, server) => {
-      await post(base, {
-        hook_event_name: 'Stop',
-        session_id: SID,
-        cwd: '/Users/chris.rubin/Documents/Claude/Scheduled/daily-briefing',
-      });
+      await post(
+        base,
+        {
+          hook_event_name: 'Stop',
+          session_id: SID,
+          cwd: '/Users/chris.rubin/Documents/Claude/Scheduled/daily-briefing',
+        },
+        AUTH,
+      );
       await new Promise((r) => setTimeout(r, 30));
       assert.equal(events.length, 0);
       assert.equal(server.stats.filtered, 1);
@@ -180,7 +191,7 @@ test('end to end: a full session arrives over HTTP and lands as one DONE tile', 
       { hook_event_name: 'Stop', last_assistant_message: 'Report done.', cwd: '/home/claude' },
       { hook_event_name: 'SessionEnd', reason: 'other', cwd: '/home/claude' },
     ];
-    for (const p of seq) await post(base, { ...p, session_id: SID });
+    for (const p of seq) await post(base, { ...p, session_id: SID }, AUTH);
     await new Promise((r) => setTimeout(r, 80));
 
     assert.equal(events.length, 5);

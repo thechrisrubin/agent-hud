@@ -1,18 +1,24 @@
 // The ingest listener.
 //
-// Two ways in, and they are authenticated differently on purpose:
+// EVERY write requires the shared secret. There is no local exemption, and
+// that is a deliberate correction to an earlier design.
 //
-//   • Loopback (127.0.0.1) — local Claude Code hooks. Anything already running
-//     as this user on this Mac can post. No secret required, because a secret
-//     would buy nothing against an attacker who is already local.
+// The earlier version trusted requests that arrived on loopback without an
+// `X-Forwarded-For` header, on the reasoning that anything already running as
+// this user on this Mac has no need of a secret. That reasoning has a hole:
+// a tunnel daemon runs ON this Mac and proxies to loopback, so whether a
+// remote request is distinguishable from a local one depends entirely on
+// whether that particular tunnel happens to set a forwarding header.
+// Cloudflare does. Tailscale Funnel was not verified to. Getting that wrong
+// once would leave the endpoint publicly writable with no sign of trouble.
 //
-//   • Everything else — Cowork, arriving through the Cloudflare tunnel from
-//     Anthropic's cloud. Requires the shared secret. Five probe sessions
-//     produced five unrelated egress IPs, so the origin address authenticates
-//     nothing and an allowlist is not an option (PHASE0-FINDINGS, Q1 verdict).
+// So the rule is now simple enough to be obviously correct: no secret, no
+// write. Local hooks are given the secret by scripts/setup.sh, which is the
+// same file that writes them — the operator never handles it.
 //
-// The endpoint is public the moment the tunnel is up. It refuses unauthenticated
-// writes from the first commit rather than as later hardening.
+// Origin address authenticates nothing: five probe sessions produced five
+// unrelated egress IPs (PHASE0-FINDINGS, Q1 verdict), so an allowlist was
+// never an option.
 
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
@@ -39,17 +45,6 @@ export type IngestOptions = {
   onEvent: (event: ThreadEvent) => void;
   onLog?: (line: string) => void;
 };
-
-function isLoopback(req: IncomingMessage): boolean {
-  const addr = req.socket.remoteAddress ?? '';
-  // A request that arrived through the tunnel is proxied by cloudflared, which
-  // runs on this machine — so it too appears to come from loopback. The
-  // forwarded-for header is what distinguishes a genuinely local caller from
-  // a remote one, and a remote caller cannot strip it.
-  const forwarded = req.headers['x-forwarded-for'] ?? req.headers['cf-connecting-ip'];
-  if (forwarded) return false;
-  return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
-}
 
 function secretMatches(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
@@ -101,15 +96,14 @@ export class IngestServer {
       return;
     }
 
-    if (!isLoopback(req)) {
-      const provided = String(req.headers['x-hud-secret'] ?? '');
-      if (!provided || !secretMatches(provided, this.opts.secret)) {
-        this.stats.rejected += 1;
-        this.log(`rejected unauthenticated request from ${req.headers['x-forwarded-for'] ?? '?'}`);
-        res.writeHead(401, { 'content-type': 'text/plain' });
-        res.end('Unauthorized\n');
-        return;
-      }
+    const provided = String(req.headers['x-hud-secret'] ?? '');
+    if (!provided || !secretMatches(provided, this.opts.secret)) {
+      this.stats.rejected += 1;
+      const origin = req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '?';
+      this.log(`rejected unauthenticated request from ${origin}`);
+      res.writeHead(401, { 'content-type': 'text/plain' });
+      res.end('Unauthorized\n');
+      return;
     }
 
     let body = '';
