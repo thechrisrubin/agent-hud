@@ -29,8 +29,8 @@ mkdir -p "$BUILD/.claude-plugin" "$BUILD/hooks"
 cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
   "name": "agent-hud",
-  "description": "v1.1 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
-  "version": "1.1.0",
+  "description": "v1.2 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
+  "version": "1.2.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
@@ -85,19 +85,22 @@ for event in EVENTS:
 # fails loudly would interrupt CR's own session, which is a far worse outcome
 # than a tile keeping its old name.
 TITLE_SCRIPT = r"""
-python3 - <<'PYEOF' 2>/dev/null || true
+# Write the reader to a file FIRST. `python3 - <<EOF` would feed the script in
+# on stdin, and stdin is where the hook payload arrives - the script would then
+# parse its own source and silently find nothing. That exact bug shipped once.
+cat <<'PYEOF' > /tmp/agent-hud-title.py 2>/dev/null || exit 0
 import json, sys, os, urllib.request
 try:
-    p = json.load(sys.stdin)
+    payload = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
-tp, sid = p.get("transcript_path"), p.get("session_id")
+tp, sid = payload.get("transcript_path"), payload.get("session_id")
 if not tp or not sid or not os.path.exists(tp):
     sys.exit(0)
 title = None
 try:
-    with open(tp, encoding="utf-8") as f:
-        for line in f:
+    with open(tp, encoding="utf-8") as fh:
+        for line in fh:
             if '"ai-title"' not in line:
                 continue
             try:
@@ -105,21 +108,26 @@ try:
             except Exception:
                 continue
             if rec.get("type") == "ai-title" and rec.get("aiTitle"):
-                title = rec["aiTitle"]          # keep scanning; newest wins
-    if not title:
-        sys.exit(0)
+                title = rec["aiTitle"]          # keep going; the newest wins
+except Exception:
+    sys.exit(0)
+if not title:
+    sys.exit(0)
+try:
     body = json.dumps({"hook_event_name": "ThreadTitle", "session_id": sid,
-                       "cwd": p.get("cwd"), "title": title}).encode()
+                       "cwd": payload.get("cwd"), "title": title}).encode()
     req = urllib.request.Request("__INGEST__", data=body, method="POST")
     req.add_header("content-type", "application/json")
     req.add_header("X-Hud-Secret", "__SECRET__")
     req.add_header("X-Claude-Title", title)
-    if os.environ.get("CLAUDE_CODE_REMOTE_SESSION_ID"):
-        req.add_header("X-Claude-Session", os.environ["CLAUDE_CODE_REMOTE_SESSION_ID"])
+    remote = os.environ.get("CLAUDE_CODE_REMOTE_SESSION_ID")
+    if remote:
+        req.add_header("X-Claude-Session", remote)
     urllib.request.urlopen(req, timeout=4).read()
 except Exception:
     pass
 PYEOF
+python3 /tmp/agent-hud-title.py 2>/dev/null || true
 """.replace("__INGEST__", url).replace("__SECRET__", secret)
 
 # Fires where a title is most likely to exist or have changed.

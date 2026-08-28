@@ -179,7 +179,11 @@ export class StateEngine {
     // An acknowledged thread that speaks again is genuinely alive. It returns
     // to the grid with a fresh history — acknowledgement clears a tile, it
     // never blacklists a thread. Brief §4.3.
-    if (thread.acknowledged) {
+    //
+    // Except a rename: a title arriving for a thread the operator has already
+    // cleared is not the thread waking up, and resurrecting it would undo a
+    // deliberate action. Take the new name, stay cleared.
+    if (thread.acknowledged && ev.kind !== 'title_only') {
       thread.acknowledged = false;
       thread.history = [];
       thread.tasks = { created: [], completed: [] };

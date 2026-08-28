@@ -402,3 +402,16 @@ test('the app can rename a thread and the tile follows', () => {
   e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Better name' } }));
   assert.equal(e.get('thread-1')!.title, 'Better name');
 });
+
+test('a rename does not resurrect a tile the operator already cleared', () => {
+  // Titles can arrive seconds after a thread finishes — quite possibly after
+  // he has cleared it. Bringing the tile back would undo a deliberate action.
+  const e = new StateEngine();
+  e.apply(ev('turn_finished'));
+  e.acknowledge('thread-1');
+  e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Late name' } }));
+
+  const th = e.get('thread-1')!;
+  assert.equal(th.acknowledged, true, 'cleared must stay cleared');
+  assert.equal(th.title, 'Late name', 'but the name still updates for when it revives');
+});
