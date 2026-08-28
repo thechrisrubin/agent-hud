@@ -238,11 +238,15 @@ Cowork session
  └ env CLAUDE_CODE_REMOTE_SESSION_ID = cse_01D8DAge…
     └ plugin hook header  X-Claude-Session   (allowedEnvVars substitutes into HEADERS, not the url)
        └ HUD stores it on the tile
-          └ click → claude://claude.ai/code/session_01D8DAge…
+          └ click → claude://claude.ai/cowork/cse_01D8DAge…
              └ that exact thread opens
 ```
 
-Every link verified live.
+**Correction (same day):** the URL above originally read `/code/session_<stripped id>`. That was wrong in two independent ways — the wrong surface (`/code`, guessed from the env var being named `CLAUDE_CODE_…`) and an invented prefix rewrite (`cse_` → `session_`, copied from a commit-message template). It opened the Claude Code *section* rather than the thread, and was written up here as verified on the strength of CR saying "click-through worked" — without checking **where** it landed.
+
+The correct form came from asking CR to paste the thread's real address from his browser: `https://claude.ai/cowork/cse_01D8DAge…`. The deep link is that URL with the `claude:` scheme in front, and the id is used exactly as it arrives. No transformation.
+
+**"It came to the front" and "the right thread opened" are different claims.** Accepting the weaker one as confirmation of the stronger is the same error as the two false negatives, pointed the other way.
 
 ## How the false negatives happened
 

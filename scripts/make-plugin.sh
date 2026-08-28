@@ -29,8 +29,8 @@ mkdir -p "$BUILD/.claude-plugin" "$BUILD/hooks"
 cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
   "name": "agent-hud",
-  "description": "v1.3 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
-  "version": "1.3.0",
+  "description": "v1.4 - Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
+  "version": "1.4.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
@@ -133,9 +133,17 @@ fi
 exit 0
 """.replace("__INGEST__", url).replace("__SECRET__", secret)
 
-# Fires where a title is most likely to exist or have changed.
-for event in ("UserPromptSubmit", "Stop"):
-    hooks[event].append({"hooks": [{"type": "command", "command": TITLE_SCRIPT, "timeout": 8}]})
+# DISABLED. Attaching a command hook alongside the http hook on the same event
+# stopped `Stop` from being delivered at all - reproduced locally: with the
+# command hook present, UserPromptSubmit arrived and Stop did not. A thread
+# that uses no tools emits only those two events, so such a thread vanished
+# from the HUD entirely. Losing tiles is far worse than tiles with imperfect
+# names, so the title hook stays off until it can be attached without
+# suppressing anything.
+ENABLE_TITLE_HOOK = False
+if ENABLE_TITLE_HOOK:
+    for event in ("UserPromptSubmit", "Stop"):
+        hooks[event].append({"hooks": [{"type": "command", "command": TITLE_SCRIPT, "timeout": 8}]})
 
 with open(sys.argv[1], "w") as f:
     json.dump({"hooks": hooks}, f, indent=2)
