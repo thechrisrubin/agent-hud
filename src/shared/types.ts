@@ -35,7 +35,9 @@ export type EventKind =
   | 'turn_finished'
   | 'session_ended'
   | 'error'
-  | 'interrupted';
+  | 'interrupted'
+  /** Carries only a thread name. Never changes state. */
+  | 'title_only';
 
 export type ThreadEvent = {
   source: EventSource;
@@ -78,6 +80,14 @@ export type EventDetail = {
    * This is what makes click-to-jump open the actual thread.
    */
   appSessionId?: string;
+  /** Where Claude Code is writing this session's transcript. */
+  transcriptPath?: string;
+  /**
+   * The generated thread name, matching what the Claude app's sidebar shows.
+   * Always preferred over prompt text: the operator recognises the app's name,
+   * not something he typed days ago.
+   */
+  aiTitle?: string;
 };
 
 /**
@@ -115,6 +125,10 @@ export type Thread = {
   title: string;
   /** True once a real prompt named this thread. Fallback titles do not count. */
   titleFromPrompt: boolean;
+  /** True once the app's own generated name arrived. Outranks everything. */
+  titleFromApp: boolean;
+  /** Where the transcript lives; used to look up the generated title. */
+  transcriptPath?: string;
   state: ThreadState;
   /** When the current state was entered. Drives "time in state" on the tile. */
   stateSince: string;

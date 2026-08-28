@@ -370,3 +370,35 @@ test('the first real prompt replaces a fallback title; later prompts do not rena
     'a tile that renames itself mid-flight is one he loses track of',
   );
 });
+
+test('the app’s generated name outranks the prompt, whenever it arrives', () => {
+  // The whole point: the tile should say what the Claude app's sidebar says,
+  // not what CR typed three days ago.
+  const e = new StateEngine();
+  e.apply(ev('prompt_submitted', { detail: { promptText: 'run the thing please' } }));
+  assert.equal(e.get('thread-1')!.title, 'run the thing please');
+
+  e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Quarterly partner outreach' } }));
+  assert.equal(e.get('thread-1')!.title, 'Quarterly partner outreach');
+
+  // A later prompt must not drag it back to raw prompt text.
+  e.apply(ev('prompt_submitted', { ts: t(20), detail: { promptText: 'now do the other bit' } }));
+  assert.equal(e.get('thread-1')!.title, 'Quarterly partner outreach');
+});
+
+test('a title-only event changes the name and nothing else', () => {
+  // It must never resurrect a finished thread or disturb sticky DONE.
+  const e = new StateEngine();
+  e.apply(ev('turn_finished'));
+  assert.equal(e.get('thread-1')!.state, 'DONE');
+  e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Renamed later' } }));
+  assert.equal(e.get('thread-1')!.state, 'DONE', 'a rename must not un-finish a thread');
+  assert.equal(e.get('thread-1')!.title, 'Renamed later');
+});
+
+test('the app can rename a thread and the tile follows', () => {
+  const e = new StateEngine();
+  e.apply(ev('title_only', { detail: { aiTitle: 'First name' } }));
+  e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Better name' } }));
+  assert.equal(e.get('thread-1')!.title, 'Better name');
+});

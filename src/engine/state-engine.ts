@@ -122,6 +122,9 @@ function impliedState(kind: EventKind): ThreadState | null {
     // Lifecycle facts, not states. `session_ended` is handled specially below
     // because it must never downgrade a sticky DONE.
     case 'session_ended':
+    // Carries a name and nothing else. Must not disturb a sticky DONE, and
+    // must not resurrect a finished thread into WORKING.
+    case 'title_only':
       return null;
     case 'task_created':
     case 'task_completed':
@@ -239,14 +242,22 @@ export class StateEngine {
     if (ev.parentThreadId && !thread.parentThreadId) {
       thread.parentThreadId = ev.parentThreadId;
     }
-    // The title comes from the FIRST prompt and then stays put — a tile that
-    // renames itself mid-flight is a tile the operator loses track of. But a
-    // fallback title (placeholder, or the folder name) is not a real title, so
-    // the first genuine prompt is always allowed to replace it.
-    if (ev.detail.promptText && !thread.titleFromPrompt) {
+    // Title precedence, strongest first:
+    //   1. the app's own generated name  — what the sidebar shows
+    //   2. the first prompt              — what he typed
+    //   3. a fallback (folder, subagent, "Claude thread")
+    //
+    // (1) wins because the whole point is that the HUD and the app agree on
+    // what a thread is called. It may also arrive late and change — that is
+    // the app renaming the thread, and the tile should follow.
+    if (ev.detail.aiTitle) {
+      thread.title = ev.detail.aiTitle;
+      thread.titleFromApp = true;
+    } else if (ev.detail.promptText && !thread.titleFromPrompt && !thread.titleFromApp) {
       thread.title = deriveTitle(ev);
       thread.titleFromPrompt = true;
     }
+    if (ev.detail.transcriptPath) thread.transcriptPath = ev.detail.transcriptPath;
   }
 
   private createThread(ev: ThreadEvent): Thread {
@@ -258,8 +269,10 @@ export class StateEngine {
       parentThreadId: ev.parentThreadId,
       source: ev.source,
       platform: ev.platform,
-      title: deriveTitle(ev),
+      title: ev.detail.aiTitle ?? deriveTitle(ev),
       titleFromPrompt: Boolean(ev.detail.promptText),
+      titleFromApp: Boolean(ev.detail.aiTitle),
+      transcriptPath: ev.detail.transcriptPath,
       state: 'WORKING',
       stateSince: ev.ts,
       history: [{ state: 'WORKING', at: ev.ts, because: ev.kind }],

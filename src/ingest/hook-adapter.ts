@@ -106,6 +106,13 @@ function kindFor(p: RawHookPayload): EventKind | null {
 
     case 'SessionEnd':
       return 'session_ended';
+
+    // Synthetic, sent by the plugin's command hook purely to deliver a thread
+    // name. It carries no state meaning, so it maps to a kind that changes
+    // nothing — the title rides in on the same event and is applied by the
+    // engine's title precedence rules.
+    case 'ThreadTitle':
+      return 'title_only';
     default:
       return null;
   }
@@ -141,6 +148,8 @@ export type AdaptOptions = {
    * Not part of the payload — see the header note on EventDetail.appSessionId.
    */
   appSessionId?: string;
+  /** The generated thread name, when the caller has resolved one. */
+  aiTitle?: string;
   /** Routine slugs from ~/Documents/Claude/Scheduled. Used for filtering. */
   routineSlugs?: ReadonlySet<string>;
   hideRoutines?: boolean;
@@ -222,6 +231,8 @@ export function adaptHookPayload(p: RawHookPayload, opts: AdaptOptions = {}): Ad
       pendingTool: p.tool_name,
       cwd: p.cwd,
       appSessionId: opts.appSessionId,
+      transcriptPath: p.transcript_path,
+      aiTitle: opts.aiTitle,
     },
   };
 

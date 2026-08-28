@@ -24,6 +24,7 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 
 import { adaptHookPayload, type RawHookPayload } from './hook-adapter.js';
+import { readAiTitle } from './transcript.js';
 import type { ThreadEvent } from '../shared/types.js';
 
 const MAX_BODY_BYTES = 2_000_000;
@@ -67,6 +68,36 @@ export class IngestServer {
   readonly stats: IngestStats = { accepted: 0, ignored: 0, filtered: 0, rejected: 0 };
 
   constructor(private opts: IngestOptions) {}
+
+  /**
+   * Titles are looked up at most once per session until one is found.
+   * Claude writes the title a moment after the session starts, so an early
+   * miss is normal and worth retrying — but re-reading a transcript on every
+   * event of a long session would be pointless file I/O on the ingest path.
+   */
+  private titleCache = new Map<string, string>();
+  private titleMisses = new Map<string, number>();
+  private static readonly MAX_TITLE_ATTEMPTS = 12;
+
+  private resolveTitle(p: RawHookPayload): string | undefined {
+    const id = p.session_id;
+    if (!id || !p.transcript_path) return undefined;
+
+    const known = this.titleCache.get(id);
+    if (known) return known;
+
+    const misses = this.titleMisses.get(id) ?? 0;
+    if (misses >= IngestServer.MAX_TITLE_ATTEMPTS) return undefined;
+
+    const title = readAiTitle(p.transcript_path);
+    if (title) {
+      this.titleCache.set(id, title);
+      this.titleMisses.delete(id);
+      return title;
+    }
+    this.titleMisses.set(id, misses + 1);
+    return undefined;
+  }
 
   private log(line: string): void {
     this.opts.onLog?.(line);
@@ -149,10 +180,18 @@ export class IngestServer {
       // headers only, not into the URL.
       const appSessionId = headerValue(req.headers['x-claude-session']);
 
+      // The thread's generated name, so the tile matches what the Claude app
+      // calls it. A title supplied directly (Cowork, via a command hook) wins;
+      // otherwise read the transcript, which only works for local sessions
+      // because a Cowork transcript lives inside Anthropic's container.
+      const aiTitle =
+        headerValue(req.headers['x-claude-title']) ?? this.resolveTitle(payload);
+
       const result = adaptHookPayload(payload, {
         hideRoutines: this.opts.hideRoutines,
         routineSlugs: this.opts.routineSlugs,
         appSessionId,
+        aiTitle,
       });
 
       if (!result.ok) {

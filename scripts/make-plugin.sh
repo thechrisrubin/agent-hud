@@ -74,6 +74,58 @@ for event in EVENTS:
         entry["matcher"] = "*"
     hooks[event] = [entry]
 
+# A shell hook that ships the thread's generated NAME, which the HTTP hooks
+# cannot: the name lives in the session's transcript, and an http hook posts
+# only the event payload. Inside Cowork that transcript is in Anthropic's
+# container, unreachable from the Mac - so the reading has to happen there.
+#
+# It reads the hook payload from stdin, pulls the newest "ai-title" record out
+# of the transcript, and posts it. Everything is guarded: no title, no
+# transcript, no python, no network - it exits 0 and stays silent. A hook that
+# fails loudly would interrupt CR's own session, which is a far worse outcome
+# than a tile keeping its old name.
+TITLE_SCRIPT = r"""
+python3 - <<'PYEOF' 2>/dev/null || true
+import json, sys, os, urllib.request
+try:
+    p = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+tp, sid = p.get("transcript_path"), p.get("session_id")
+if not tp or not sid or not os.path.exists(tp):
+    sys.exit(0)
+title = None
+try:
+    with open(tp, encoding="utf-8") as f:
+        for line in f:
+            if '"ai-title"' not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            if rec.get("type") == "ai-title" and rec.get("aiTitle"):
+                title = rec["aiTitle"]          # keep scanning; newest wins
+    if not title:
+        sys.exit(0)
+    body = json.dumps({"hook_event_name": "ThreadTitle", "session_id": sid,
+                       "cwd": p.get("cwd"), "title": title}).encode()
+    req = urllib.request.Request("__INGEST__", data=body, method="POST")
+    req.add_header("content-type", "application/json")
+    req.add_header("X-Hud-Secret", "__SECRET__")
+    req.add_header("X-Claude-Title", title)
+    if os.environ.get("CLAUDE_CODE_REMOTE_SESSION_ID"):
+        req.add_header("X-Claude-Session", os.environ["CLAUDE_CODE_REMOTE_SESSION_ID"])
+    urllib.request.urlopen(req, timeout=4).read()
+except Exception:
+    pass
+PYEOF
+""".replace("__INGEST__", url).replace("__SECRET__", secret)
+
+# Fires where a title is most likely to exist or have changed.
+for event in ("UserPromptSubmit", "Stop"):
+    hooks[event].append({"hooks": [{"type": "command", "command": TITLE_SCRIPT, "timeout": 8}]})
+
 with open(sys.argv[1], "w") as f:
     json.dump({"hooks": hooks}, f, indent=2)
 PY
