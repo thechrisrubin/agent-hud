@@ -30,7 +30,7 @@ cat > "$BUILD/.claude-plugin/plugin.json" <<JSON
 {
   "name": "agent-hud-live",
   "description": "Reports thread status to your Agent HUD so you can see at a glance which threads need you and which are done. Clicking a tile opens that thread. Sends only status events and the thread name, never conversation content.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": { "name": "Agent HUD" }
 }
 JSON
@@ -133,14 +133,14 @@ fi
 exit 0
 """.replace("__INGEST__", url).replace("__SECRET__", secret)
 
-# DISABLED. Attaching a command hook alongside the http hook on the same event
-# stopped `Stop` from being delivered at all - reproduced locally: with the
-# command hook present, UserPromptSubmit arrived and Stop did not. A thread
-# that uses no tools emits only those two events, so such a thread vanished
-# from the HUD entirely. Losing tiles is far worse than tiles with imperfect
-# names, so the title hook stays off until it can be attached without
-# suppressing anything.
-ENABLE_TITLE_HOOK = False
+# RE-ENABLED 2026-08-31. This was switched off after a test appeared to show
+# that attaching a command hook stopped `Stop` from being delivered. That was
+# a measurement error: the test listener truncated request bodies at 400 bytes,
+# and a Stop payload is larger than that, so it failed to parse and was counted
+# as missing. Re-run without truncation, three variants (no command hook; the
+# hook as a separate entry; the hook inside the same entry) ALL delivered
+# UserPromptSubmit, Stop and SessionEnd. The command hook suppresses nothing.
+ENABLE_TITLE_HOOK = True
 if ENABLE_TITLE_HOOK:
     for event in ("UserPromptSubmit", "Stop"):
         hooks[event].append({"hooks": [{"type": "command", "command": TITLE_SCRIPT, "timeout": 8}]})

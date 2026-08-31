@@ -73,11 +73,25 @@ Full write-up for Anthropic, with evidence and a reproduction: [`SUPPORT-REPORT.
 
 **Waiting did not help.** The "it will probably settle" prediction was wrong: three days passed with no change.
 
-## What is NOT worth trying again without new information
+## A wrong conclusion, corrected 2026-08-31
 
-**Attaching a `command` hook to an event that already has an http hook.** It suppressed `Stop` entirely — reproduced locally: with the command hook present, `UserPromptSubmit` arrived and `Stop` did not. A thread using no tools emits only those two events, so such threads vanished from the HUD completely.
+This document previously stated that attaching a `command` hook to an event that already has an http hook **suppresses `Stop`**, and the title feature was disabled because of it.
 
-The title-reading script itself is correct and works — it is retained but disabled behind `ENABLE_TITLE_HOOK = False` in `scripts/make-plugin.sh`. The problem was never the script; it was where it was attached.
+**That was false, and the cause was a bug in the test, not the plugin.** The test listener truncated request bodies at 400 bytes. A `Stop` payload is larger than that (it carries `last_assistant_message`, `background_tasks`, `session_crons`), so it failed to parse and was counted as a missing event.
+
+Re-run with truncation removed, three variants were compared:
+
+| Variant | UserPromptSubmit | Stop | SessionEnd | ThreadTitle |
+|---|---|---|---|---|
+| http hooks only | yes | yes | yes | — |
+| command hook as a separate entry | yes | yes | yes | yes |
+| command hook inside the same entry | yes | yes | yes | yes |
+
+**The command hook suppresses nothing.** Either attachment style works. The title feature is re-enabled (`ENABLE_TITLE_HOOK = True`).
+
+The real cause of the outage was always plugin delivery — the upload path failing — which is resolved above.
+
+**Lesson:** an instrument that quietly discards data will manufacture a plausible bug. The truncation was added for readable logs and cost a working feature plus an evening.
 
 ## Thread naming — the open item
 
