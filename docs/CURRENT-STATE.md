@@ -98,7 +98,18 @@ The real cause of the outage was always plugin delivery — the upload path fail
 CR's requirement: tiles should show the name the Claude app's sidebar shows, not the text of a prompt.
 
 - **Local sessions: solved.** Claude Code writes an `ai-title` record into each transcript; the HUD reads it directly.
-- **Cowork sessions: unsolved.** The transcript lives inside Anthropic's container. The shell hook written to read it there works correctly but cannot be attached without breaking other hooks.
+- **Cowork sessions: not achievable by this route. Settled 2026-08-31 with a direct measurement.**
+
+Inside a live Cowork session, with the correct plugin installed:
+
+```
+grep -o '"type": *"command"' …/agent-hud-live/hooks/hooks.json | wc -l   →  2
+grep -c '"ai-title"' ~/.claude/projects/*/*.jsonl                        →  0
+```
+
+The plugin and its title hook are present and correct. **Cowork transcripts contain no `ai-title` records whatsoever.** The generated name is produced server-side by claude.ai and rendered in the sidebar; it is never written into the container. The hook was reading a file that never contains the answer.
+
+This invalidates the assumption the whole approach rested on — that Cowork transcripts resemble local ones. Local Claude Code writes `ai-title`; the Cowork runtime does not.
 
 Remaining options, in order of preference:
 
