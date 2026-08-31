@@ -203,3 +203,36 @@ test('the app session id survives a restart, so old tiles stay clickable', () =>
   revived.load(JSON.parse(JSON.stringify(e.all())), T0);
   assert.equal(revived.get('a')!.appSessionId, 'cse_01ABC');
 });
+
+test('a finished orphan subagent is not promoted to the grid', () => {
+  // The promotion rule exists so nothing that needs attention is lost. A
+  // subagent that has finished needs nothing, and promoting it filled the
+  // grid with a single session's spent helpers.
+  const e = new StateEngine();
+  e.apply(ev('subagent_finished', 'done-orphan', { parentThreadId: 'gone' }));
+  const snap = project(e.all(), NOW, OPTS);
+  assert.deepEqual(snap.tiles.map((t) => t.threadId), []);
+  assert.equal(snap.hiddenCount, 1, 'hidden, not silently dropped');
+});
+
+test('an orphan that still needs something IS promoted', () => {
+  for (const kind of ['permission_requested', 'input_requested', 'error'] as EventKind[]) {
+    const e = new StateEngine();
+    e.apply(ev(kind, 'orphan', { parentThreadId: 'gone' }));
+    const snap = project(e.all(), NOW, OPTS);
+    assert.equal(snap.tiles.length, 1, `${kind} orphan must stay visible`);
+  }
+});
+
+test('clearing a thread clears its subagents with it', () => {
+  // Otherwise dismissing one tile spawns several.
+  const e = new StateEngine();
+  e.apply(ev('turn_finished', 'parent'));
+  e.apply(ev('subagent_finished', 'kid1', { parentThreadId: 'parent' }));
+  e.apply(ev('subagent_finished', 'kid2', { parentThreadId: 'parent' }));
+
+  e.acknowledge('parent');
+  assert.equal(e.get('kid1')!.acknowledged, true);
+  assert.equal(e.get('kid2')!.acknowledged, true);
+  assert.equal(project(e.all(), NOW, OPTS).tiles.length, 0);
+});

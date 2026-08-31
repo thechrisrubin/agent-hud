@@ -344,6 +344,12 @@ export class StateEngine {
     if (!t) return false;
     if (t.state !== 'DONE' && t.state !== 'ERROR') return false;
     t.acknowledged = true;
+    // Clearing a thread clears its subagents with it. They are part of that
+    // thread's work, they are shown nested inside it, and leaving them behind
+    // means dismissing one tile silently spawns several others.
+    for (const child of this.threads.values()) {
+      if (child.parentThreadId === threadId) child.acknowledged = true;
+    }
     return true;
   }
 

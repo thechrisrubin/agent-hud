@@ -124,13 +124,25 @@ export function project(threads: Thread[], nowMs: number, opts: ProjectOptions):
     tiles.push(toTile(t, nowMs, kids));
   }
 
-  // A subagent whose parent we never saw would otherwise be invisible. Promote
-  // it rather than drop it — a missing tile is the one failure the operator
-  // cannot detect for himself.
+  // A subagent whose parent is gone — never seen, or acknowledged and cleared.
+  //
+  // The rule was originally "always promote it", so nothing could be lost. In
+  // practice that filled the grid with finished helpers from a single session:
+  // 25 tiles, almost all of them subagents whose parent had been cleared.
+  //
+  // The refined rule keeps the intent and drops the noise: promote an orphan
+  // only if it still wants something. A subagent that finished is not a
+  // missing tile — its work is done and its parent has been dealt with.
+  const NEEDS_A_HOME: ReadonlySet<ThreadState> = new Set<ThreadState>([
+    'NEEDS_APPROVAL',
+    'NEEDS_INPUT',
+    'ERROR',
+    'WORKING',
+  ]);
   for (const t of live) {
     if (!t.parentThreadId) continue;
-    if (threads.some((p) => p.threadId === t.parentThreadId)) continue;
-    if (!visible(t.state)) {
+    if (threads.some((p) => p.threadId === t.parentThreadId && !p.acknowledged)) continue;
+    if (!NEEDS_A_HOME.has(t.state) || !visible(t.state)) {
       hiddenCount += 1;
       continue;
     }
