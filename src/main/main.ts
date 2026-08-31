@@ -13,6 +13,7 @@ import { loadConfig, saveConfig, STATE_PATH, LOG_PATH, type HudConfig } from '..
 import { StateEngine } from '../engine/state-engine.js';
 import { loadSnapshot, saveSnapshot } from '../engine/persistence.js';
 import { project } from '../engine/project.js';
+import { TitleQueue } from '../engine/titler.js';
 import { IngestServer } from '../ingest/server.js';
 import { loadRoutineSlugs } from '../ingest/routines.js';
 import type { ThreadEvent, ThreadState } from '../shared/types.js';
@@ -110,8 +111,31 @@ function notifyIfNeeded(threadId: string): void {
   n.show();
 }
 
+/**
+ * Names threads whose real name exists only on Anthropic's servers — every
+ * Cowork thread. Local sessions get a genuine title from their transcript and
+ * are skipped, so no cost is incurred for them.
+ */
+const titles = new TitleQueue((threadId, title) => {
+  if (engine.setGeneratedTitle(threadId, title)) {
+    scheduleSave();
+    pushSnapshot();
+  }
+});
+
+function maybeTitle(threadId: string, ev: ThreadEvent): void {
+  const t = engine.get(threadId);
+  if (!t) return;
+  // A real name always wins; never spend on a thread that has one.
+  if (t.titleFromApp) return titles.skip(threadId);
+  const prompt = ev.detail.promptText;
+  if (!prompt) return;
+  titles.request(threadId, prompt);
+}
+
 function onEvent(ev: ThreadEvent): void {
   engine.apply(ev);
+  maybeTitle(ev.threadId, ev);
   notifyIfNeeded(ev.threadId);
   scheduleSave();
   pushSnapshot();

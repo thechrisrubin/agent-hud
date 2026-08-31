@@ -415,3 +415,48 @@ test('a rename does not resurrect a tile the operator already cleared', () => {
   assert.equal(th.acknowledged, true, 'cleared must stay cleared');
   assert.equal(th.title, 'Late name', 'but the name still updates for when it revives');
 });
+
+// ---------------------------------------------------------------------------
+// Generated titles — for Cowork threads, whose real name never leaves the server
+// ---------------------------------------------------------------------------
+
+test('a generated title names a thread that has only prompt text', () => {
+  const e = new StateEngine();
+  e.apply(ev('prompt_submitted', { detail: { promptText: 'Checking to see if the thing is fully running, including naming' } }));
+  assert.equal(e.setGeneratedTitle('thread-1', 'HUD naming check'), true);
+  assert.equal(e.get('thread-1')!.title, 'HUD naming check');
+  assert.equal(e.get('thread-1')!.titleGenerated, true);
+});
+
+test('a generated title must never displace the app’s real name', () => {
+  // A label we invented is strictly worse than the name the sidebar shows.
+  const e = new StateEngine();
+  e.apply(ev('title_only', { detail: { aiTitle: 'Real app name' } }));
+  assert.equal(e.setGeneratedTitle('thread-1', 'Invented name'), false);
+  assert.equal(e.get('thread-1')!.title, 'Real app name');
+});
+
+test('a real app name arriving later replaces a generated one', () => {
+  const e = new StateEngine();
+  e.apply(ev('prompt_submitted', { detail: { promptText: 'do the thing' } }));
+  e.setGeneratedTitle('thread-1', 'Invented name');
+  e.apply(ev('title_only', { ts: t(10), detail: { aiTitle: 'Real app name' } }));
+  const th = e.get('thread-1')!;
+  assert.equal(th.title, 'Real app name');
+  assert.equal(th.titleGenerated, false);
+});
+
+test('a later prompt does not overwrite a generated title', () => {
+  const e = new StateEngine();
+  e.apply(ev('prompt_submitted', { detail: { promptText: 'first message' } }));
+  e.setGeneratedTitle('thread-1', 'Good short name');
+  e.apply(ev('prompt_submitted', { ts: t(10), detail: { promptText: 'a follow-up' } }));
+  assert.equal(e.get('thread-1')!.title, 'Good short name');
+});
+
+test('an empty or unknown thread is refused rather than blanked', () => {
+  const e = new StateEngine();
+  e.apply(ev('prompt_submitted', { detail: { promptText: 'x' } }));
+  assert.equal(e.setGeneratedTitle('thread-1', '   '), false);
+  assert.equal(e.setGeneratedTitle('nonexistent', 'whatever'), false);
+});

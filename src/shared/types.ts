@@ -127,6 +127,8 @@ export type Thread = {
   titleFromPrompt: boolean;
   /** True once the app's own generated name arrived. Outranks everything. */
   titleFromApp: boolean;
+  /** True once the HUD made its own label, because no real name was available. */
+  titleGenerated: boolean;
   /** Where the transcript lives; used to look up the generated title. */
   transcriptPath?: string;
   state: ThreadState;

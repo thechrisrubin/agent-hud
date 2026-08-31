@@ -257,7 +257,13 @@ export class StateEngine {
     if (ev.detail.aiTitle) {
       thread.title = ev.detail.aiTitle;
       thread.titleFromApp = true;
-    } else if (ev.detail.promptText && !thread.titleFromPrompt && !thread.titleFromApp) {
+      thread.titleGenerated = false;
+    } else if (
+      ev.detail.promptText &&
+      !thread.titleFromPrompt &&
+      !thread.titleFromApp &&
+      !thread.titleGenerated
+    ) {
       thread.title = deriveTitle(ev);
       thread.titleFromPrompt = true;
     }
@@ -276,6 +282,7 @@ export class StateEngine {
       title: ev.detail.aiTitle ?? deriveTitle(ev),
       titleFromPrompt: Boolean(ev.detail.promptText),
       titleFromApp: Boolean(ev.detail.aiTitle),
+      titleGenerated: false,
       transcriptPath: ev.detail.transcriptPath,
       state: 'WORKING',
       stateSince: ev.ts,
@@ -337,6 +344,22 @@ export class StateEngine {
     if (!t) return false;
     if (t.state !== 'DONE' && t.state !== 'ERROR') return false;
     t.acknowledged = true;
+    return true;
+  }
+
+  /**
+   * Apply a title the HUD generated itself, for threads whose real name lives
+   * only on Anthropic's servers (all Cowork threads). Deliberately refuses to
+   * overwrite a genuine app name — a made-up label must never displace the
+   * real one. Returns whether it was applied.
+   */
+  setGeneratedTitle(threadId: string, title: string): boolean {
+    const t = this.threads.get(threadId);
+    if (!t || t.titleFromApp) return false;
+    const clean = title.replace(/\s+/g, ' ').trim();
+    if (!clean) return false;
+    t.title = clean;
+    t.titleGenerated = true;
     return true;
   }
 
