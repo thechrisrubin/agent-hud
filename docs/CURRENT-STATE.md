@@ -27,13 +27,26 @@ What was ruled out, with evidence:
 - **Not auth.** Zero rejections. Nothing is arriving to reject.
 - **Not the HUD.** 110 events accepted from local sessions in the same period.
 
-That leaves the account-to-cloud plugin sync, which is not observable from this machine.
+**CAUSE FOUND (2026-08-31).** The plugin is not being delivered to Cowork sessions at all. A session was asked to inspect its own filesystem and reported:
+
+```
+~/.claude/plugins/   →  one subfolder, `synced`, and nothing else
+find ~/.claude/plugins -name hooks.json  →  no results
+```
+
+No plugin with a hooks config exists in the session. Nothing in this repo can fix that: the plugin file is valid, the address is reachable, and the app reports it installed and enabled. Delivery is failing upstream.
+
+For contrast, Phase 0 observed that same directory containing CR's synced account plugins (sales, marketing, dropbox), each a full directory tree. That is what a healthy state looks like.
+
+**Do not keep reinstalling.** Four reinstalls in one evening produced no change, and the diagnostic above explains why. This is a support question for Anthropic, not a build problem.
 
 ## What to try, in order
 
-1. **Just start a Cowork thread.** Syncs of this kind often settle by themselves. Try this before anything else.
-2. **If still silent:** reinstall the plugin. `bash scripts/make-plugin.sh` rebuilds it against the current address and secret. The current build (`agent-hud-live`) is the last known-good configuration: http hooks only, with the `X-Claude-Session` header that makes click-through work.
-3. **If still silent after that:** the address may have changed. Tailscale keeps it stable while the app runs, but confirm with `tailscale funnel status` and rebuild the plugin if the hostname differs — the hostname is baked into the plugin at build time.
+1. **Check whether plugin sync has recovered** — ask a Cowork session to run `find ~/.claude/plugins -name hooks.json`. If it finds one, the plugin is being delivered again and threads should flow.
+2. **If it is still empty, do not reinstall.** That was tried four times to no effect, and the session's own filesystem shows why. Raise it with Anthropic support: a personal plugin, uploaded via the desktop app, shows as installed and enabled but is not delivered to Cowork sessions.
+3. **Check the address only if the above recovers and threads still do not arrive.** The hostname is baked into the plugin at build time; confirm with `tailscale funnel status` and rebuild if it differs.
+
+**Waiting did not help.** The "it will probably settle" prediction was wrong: three days passed with no change.
 
 ## What is NOT worth trying again without new information
 
