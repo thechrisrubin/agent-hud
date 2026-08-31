@@ -29,6 +29,9 @@ const dot = document.getElementById('dot') as HTMLElement;
 const counts = document.getElementById('counts') as HTMLElement;
 const toast = document.getElementById('toast') as HTMLElement;
 
+/** Beyond this, live subagents collapse to a count. */
+const MAX_CHILD_ROWS = 3;
+
 const STATE_LABEL: Record<string, string> = {
   WORKING: 'Working',
   NEEDS_INPUT: 'Needs you',
@@ -104,12 +107,28 @@ function buildTile(t: TileView): HTMLElement {
   tile.append(meta);
 
   if (t.children.length) {
+    // Subagents are supporting detail, not the point of the tile. A dozen
+    // finished helpers listed in full buried everything else on the grid, so
+    // finished ones collapse to a count and only the live ones are named.
     const kids = el('div', 'children');
-    for (const c of t.children) {
+    const busy = t.children.filter((c) => c.state !== 'DONE' && c.state !== 'IDLE');
+    const doneCount = t.children.length - busy.length;
+
+    const word = t.children.length === 1 ? 'subagent' : 'subagents';
+    const parts = [`${t.children.length} ${word}`];
+    if (doneCount) parts.push(`${doneCount} done`);
+    kids.append(el('div', 'summary', parts.join(' · ')));
+
+    for (const c of busy.slice(0, MAX_CHILD_ROWS)) {
       const row = el('div', `child ${c.state}`);
       row.append(el('span', 'pip'));
-      row.append(el('span', 'name', `${c.title} · ${c.activityLine}`));
+      // The child's own activity, not its final message — that text is long,
+      // repetitive across siblings, and is not what the tile is for.
+      row.append(el('span', 'name', c.title));
       kids.append(row);
+    }
+    if (busy.length > MAX_CHILD_ROWS) {
+      kids.append(el('div', 'summary', `+${busy.length - MAX_CHILD_ROWS} more running`));
     }
     tile.append(kids);
   }

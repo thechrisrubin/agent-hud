@@ -80,6 +80,13 @@ export class IngestServer {
   private static readonly MAX_TITLE_ATTEMPTS = 12;
 
   private resolveTitle(p: RawHookPayload): string | undefined {
+    // Subagent events carry the PARENT's session_id and the parent's
+    // transcript, while the tile they create is the child. Resolving a title
+    // here would give every subagent its parent's name — which is exactly what
+    // happened: a dozen child rows all reading "Phase 0 probe runbook".
+    if (p.hook_event_name === 'SubagentStart' || p.hook_event_name === 'SubagentStop') {
+      return undefined;
+    }
     const id = p.session_id;
     if (!id || !p.transcript_path) return undefined;
 

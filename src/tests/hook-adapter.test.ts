@@ -219,3 +219,21 @@ test('replaying the real Cowork sessions produces sane, finished threads', (t) =
     assert.notEqual(th.title, 'Untitled thread', 'a real session should get a real title');
   }
 });
+
+test('a subagent must not inherit its parent’s title', () => {
+  // Subagent events carry the parent's session_id, so anything resolved from
+  // that id belongs to the parent. Observed live: twelve child rows all
+  // showing the parent thread's name.
+  const parent = adaptHookPayload(
+    { hook_event_name: 'Stop', session_id: SID },
+    { now: NOW, aiTitle: 'Phase 0 probe runbook' },
+  );
+  assert.equal(parent.ok && parent.event.detail.aiTitle, 'Phase 0 probe runbook');
+
+  const child = adaptHookPayload(
+    { hook_event_name: 'SubagentStop', session_id: SID, agent_id: 'agent-1' },
+    { now: NOW },
+  );
+  assert.equal(child.ok && child.event.threadId, 'agent-1');
+  assert.equal(child.ok && child.event.detail.aiTitle, undefined);
+});

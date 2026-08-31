@@ -66,6 +66,8 @@ h1 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: u
 
 .tile {
   position: relative;
+  /* Last line of defence. Nothing inside a tile may paint outside it. */
+  overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--panel-edge);
   border-left: 6px solid var(--quiet);
@@ -79,6 +81,7 @@ h1 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: u
 
 .tile .title {
   font-size: 16px; font-weight: 600; line-height: 1.3;
+  overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; margin-bottom: 8px;
 }
@@ -91,9 +94,11 @@ h1 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: u
 
 .tile .activity {
   color: var(--text); font-size: 14px; margin: 8px 0 4px;
+  overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.tile .meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; }
+.tile .meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; min-width: 0; }
+.tile .meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Progress: a real bar only when there is a real number behind it.
    Anything else is an indeterminate shimmer, never a fake percentage. */
@@ -136,10 +141,14 @@ h1 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: u
 
 /* ---- nested subagents ---- */
 
-.children { margin-top: 10px; border-top: 1px solid var(--panel-edge); padding-top: 8px; display: grid; gap: 6px; }
-.child { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.children { margin-top: 10px; border-top: 1px solid var(--panel-edge); padding-top: 8px; display: grid; gap: 6px; min-width: 0; }
+.children .summary { font-size: 12px; color: var(--muted); }
+/* min-width:0 is load-bearing. A flex item will not shrink below its content
+   width without it, so text-overflow:ellipsis silently does nothing and long
+   text runs straight through the tile's edge. */
+.child { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
 .child .pip { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--quiet); }
-.child .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.child .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .child.WORKING .pip { background: var(--working); }
 .child.NEEDS_INPUT .pip { background: var(--needs-input); }
 .child.NEEDS_APPROVAL .pip { background: var(--needs-approval); }
