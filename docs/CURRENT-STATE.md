@@ -111,11 +111,20 @@ The plugin and its title hook are present and correct. **Cowork transcripts cont
 
 This invalidates the assumption the whole approach rested on — that Cowork transcripts resemble local ones. Local Claude Code writes `ai-title`; the Cowork runtime does not.
 
-Remaining options, in order of preference:
+**RESOLVED — CR chose local generation (2026-08-31).**
 
-1. **Find a safe way to attach the title hook** — a different event, a different structure. Untested, and it needs a way to experiment that does not risk CR's working setup.
-2. **Generate a name locally** from the first prompt. No credentials, works today, never exactly matches the sidebar.
-3. **Ask claude.ai for the real title** using CR's session. Exact names, but brief §8 names this an anti-goal — fragile, breaks without notice, and the HUD would hold his credentials. **This is CR's decision, not the build team's**, and the recommendation is against it for a cosmetic gain.
+Title precedence, strongest first:
+
+1. **The app's own name** — read from the transcript's `ai-title` record. Local sessions only; Cowork transcripts have none.
+2. **A generated label** — the HUD asks Haiku to title the first prompt. One call per thread ever, two at a time, 30s timeout, every failure leaves the previous title untouched. Runs behind ingest so it can never delay a hook.
+3. **The first prompt**, truncated.
+4. **A fallback** — the folder name locally, `Claude thread` for Cowork.
+
+A generated label can never displace a real name; a real name arriving later replaces a generated one. Restored threads are titled at startup, since titling is otherwise only triggered by incoming events.
+
+The instruction is written defensively: an early version answered the prompt instead of labelling it ("Run `echo hud-live`…" → "It worked"). It now states the message is data to summarise. A direct injection attempt titles as "Prompt injection attempt ignored".
+
+**These names do not match the sidebar word for word** and cannot: the sidebar's names exist only on Anthropic's servers. This names threads the same *way* the app does.
 
 ---
 
