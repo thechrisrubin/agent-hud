@@ -36,7 +36,13 @@ find ~/.claude/plugins -name hooks.json  →  no results
 
 No plugin with a hooks config exists in the session. Nothing in this repo can fix that: the plugin file is valid, the address is reachable, and the app reports it installed and enabled. Delivery is failing upstream.
 
-For contrast, Phase 0 observed that same directory containing CR's synced account plugins (sales, marketing, dropbox), each a full directory tree. That is what a healthy state looks like.
+**Narrowed further, same day.** Plugin sync itself is healthy: four marketplace plugins (`cowork-plugin-management`, `dropbox`, `marketing`, `sales`) arrive intact. The uploaded plugin is simply not among them.
+
+`manifest.json` in that directory lists only those four, each with `"marketplaceName": "knowledge-work-plugins"`. Its `lastUpdated` is **2026-08-28T06:35Z** — roughly twelve hours *before* the plugin was first uploaded — and it has not refreshed since. The synced catalog has never contained any version of it.
+
+**The contradiction, stated honestly:** on 2026-08-28 the plugin demonstrably ran inside five Cowork sessions, carrying a header substituted from `${CLAUDE_CODE_REMOTE_SESSION_ID}` — impossible unless it was present in the session. So uploaded plugins reached containers by some path other than this catalog, and that path has stopped. That path is not observable from this machine.
+
+Full write-up for Anthropic, with evidence and a reproduction: [`SUPPORT-REPORT.md`](SUPPORT-REPORT.md).
 
 **Do not keep reinstalling.** Four reinstalls in one evening produced no change, and the diagnostic above explains why. This is a support question for Anthropic, not a build problem.
 
