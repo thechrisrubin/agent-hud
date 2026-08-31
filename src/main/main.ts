@@ -133,6 +133,30 @@ function maybeTitle(threadId: string, ev: ThreadEvent): void {
   titles.request(threadId, prompt);
 }
 
+/**
+ * Name threads that came back from disk still wearing their prompt text.
+ *
+ * Titling is normally triggered by an incoming event, so a thread that is
+ * alive across a restart would otherwise keep its raw prompt forever — which
+ * is exactly what happened to a live Cowork thread after a restart.
+ *
+ * The thread's current title IS the prompt (that is what a prompt-derived
+ * title is), so it can be used as the source. Restricted to threads on the
+ * visible grid: there is no reason to spend on quiet or cleared ones.
+ */
+function titleRestoredThreads(): void {
+  for (const t of engine.all()) {
+    if (t.acknowledged || t.parentThreadId) continue;
+    if (t.titleFromApp) {
+      titles.skip(t.threadId);
+      continue;
+    }
+    if (t.titleGenerated || !t.titleFromPrompt) continue;
+    if (t.state === 'IDLE' || t.state === 'STALE') continue;
+    titles.request(t.threadId, t.title);
+  }
+}
+
 function onEvent(ev: ThreadEvent): void {
   engine.apply(ev);
   maybeTitle(ev.threadId, ev);
@@ -308,6 +332,7 @@ app.whenReady().then(async () => {
   if (restored.length) {
     engine.load(restored, new Date().toISOString());
     log(`restored ${restored.length} threads`);
+    titleRestoredThreads();
   }
 
   await startIngest();
