@@ -1,5 +1,14 @@
 # For Anthropic support — an uploaded plugin stopped reaching Cowork sessions
 
+> **RESOLVED 2026-08-31, and still worth reporting.** Installing the same plugin
+> via the `create-cowork-plugin` skill's `.plugin` card delivered it correctly;
+> the plugin now appears in `~/.claude/plugins/synced/` and its hooks fire.
+> Four installs through the desktop app's **Upload plugin** never delivered it.
+>
+> The report below stands as a bug description: the upload path silently fails
+> while reporting the plugin installed and enabled. It also worked briefly on
+> 2026-08-28 before failing, so it appears unreliable rather than unimplemented.
+
 **Account:** (redacted) · org `<org-id>`
 **Desktop app:** 1.37937.3 · macOS 26.4.1 · Apple M4 Pro
 **Dates:** worked 2026-08-28 ~19:40–19:55 UTC · stopped after ~19:55 UTC · still failing 2026-08-31

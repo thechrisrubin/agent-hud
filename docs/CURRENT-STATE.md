@@ -1,4 +1,4 @@
-# Where things stand — 2026-08-28, end of session
+# Where things stand — 2026-08-31
 
 **Read this first.** It is the fastest way to know what works, what is broken, and what to try next.
 
@@ -15,9 +15,27 @@
 | Ingest address | `https://your-mac.tailXXXX.ts.net` — Tailscale Funnel, verified publicly reachable. |
 | Tests | 73 passing (`npm test`). |
 
-## Broken
+## RESOLVED 2026-08-31 — install the plugin via `create-cowork-plugin`, not "Upload plugin"
 
-**New Cowork threads are not reaching the HUD.** Started at roughly 20:00 UTC, after four plugin installs in an hour.
+Cowork ingest is working again. A thread using no tools — the exact case that had been silent for three days — arrived, went `WORKING → DONE`, and was clickable.
+
+**The working install route:**
+
+1. In a Cowork thread, ask the `cowork-plugin-management` plugin's **`create-cowork-plugin`** skill to build the plugin, giving it the exact `hooks/hooks.json` (generate with `bash scripts/make-plugin.sh`, then read the file out of the zip).
+2. It returns a `.plugin` card. Click **Save plugin** on the card.
+3. Start a new Cowork thread.
+
+**The broken route: the desktop app's "Upload plugin".** Four uploads across an evening never delivered the plugin to a Cowork container. The synced manifest never listed it and `find ~/.claude/plugins -name hooks.json` inside a session returned nothing.
+
+A Cowork session inspecting its own state judged these two routes to be "the same install path". They are not: after the card install, `agent-hud-live` appears in `~/.claude/plugins/synced/` alongside the four marketplace plugins, where four uploads had failed to put it.
+
+**Unexplained, and worth remembering:** the uploaded plugin *did* work on 2026-08-28 for about fifteen minutes — five Cowork sessions fired its hooks. So the upload path is not simply non-functional; it is unreliable. Prefer the card route.
+
+Kept below for the record: what the failure looked like and what was ruled out.
+
+## The failure, 2026-08-28 to 2026-08-31 (resolved, see above)
+
+**New Cowork threads were not reaching the HUD.** Started at roughly 20:00 UTC, after four plugin installs in an hour.
 
 What was ruled out, with evidence:
 
@@ -46,8 +64,9 @@ Full write-up for Anthropic, with evidence and a reproduction: [`SUPPORT-REPORT.
 
 **Do not keep reinstalling.** Four reinstalls in one evening produced no change, and the diagnostic above explains why. This is a support question for Anthropic, not a build problem.
 
-## What to try, in order
+## If it breaks again, in order
 
+0. **Reinstall via the `create-cowork-plugin` card route above.** That is what fixed it. Do not use "Upload plugin".
 1. **Check whether plugin sync has recovered** — ask a Cowork session to run `find ~/.claude/plugins -name hooks.json`. If it finds one, the plugin is being delivered again and threads should flow.
 2. **If it is still empty, do not reinstall.** That was tried four times to no effect, and the session's own filesystem shows why. Raise it with Anthropic support: a personal plugin, uploaded via the desktop app, shows as installed and enabled but is not delivered to Cowork sessions.
 3. **Check the address only if the above recovers and threads still do not arrive.** The hostname is baked into the plugin at build time; confirm with `tailscale funnel status` and rebuild if it differs.
