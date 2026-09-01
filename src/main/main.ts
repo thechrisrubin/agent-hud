@@ -191,8 +191,23 @@ async function startIngest(): Promise<void> {
   }
 }
 
+// A saved position can point at a display that is no longer there — an
+// external monitor unplugged, or a rearranged desk. Electron will happily
+// open the window off-screen, which looks exactly like the HUD failing to
+// start. Only reuse a saved position if it still lands somewhere visible.
+function stillOnScreen(bounds: HudConfig['windowBounds']): HudConfig['windowBounds'] {
+  if (!bounds) return undefined;
+  const visible = screen.getAllDisplays().some((d) => {
+    const a = d.workArea;
+    const overlapX = Math.min(bounds.x + bounds.width, a.x + a.width) - Math.max(bounds.x, a.x);
+    const overlapY = Math.min(bounds.y + bounds.height, a.y + a.height) - Math.max(bounds.y, a.y);
+    return overlapX >= 200 && overlapY >= 100;
+  });
+  return visible ? bounds : undefined;
+}
+
 function createWindow(): void {
-  const bounds = cfg.windowBounds;
+  const bounds = stillOnScreen(cfg.windowBounds);
   const area = screen.getPrimaryDisplay().workAreaSize;
 
   win = new BrowserWindow({
