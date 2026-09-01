@@ -2,12 +2,12 @@
 # Starts Agent HUD. Used by the login item (com.brandmultiplier.agent-hud)
 # and safe to run by hand:   bash ~/.agent-hud/launch-hud.sh
 #
-# This copy lives outside the project on purpose: the project sits in Box,
-# and at login Box may not have mounted yet. This script waits for it.
+# This copy lives outside the project on purpose, so the login item keeps
+# working even if the project folder is renamed or temporarily missing.
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-ROOT="/Users/…/agent-hud"
+ROOT="/Users/chris.rubin/code/agent-hud"
 LOG="$HOME/.agent-hud/launch.log"
 PORT=43200
 
@@ -19,14 +19,14 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 0
 fi
 
-# Wait for Box to mount the project (up to 5 minutes after login).
+# Wait for the project to be readable (up to 5 minutes after login).
 for _ in $(seq 1 60); do
   [ -f "$ROOT/dist/main/main.js" ] && break
   sleep 5
 done
 
 if [ ! -f "$ROOT/dist/main/main.js" ]; then
-  say "gave up: can't reach the project in Box at $ROOT"
+  say "gave up: can't reach the project at $ROOT"
   exit 1
 fi
 
