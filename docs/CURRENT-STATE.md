@@ -1,6 +1,51 @@
-# Where things stand — 2026-08-31
+# Where things stand — 2026-09-08
 
 **Read this first.** It is the fastest way to know what works, what is broken, and what to try next.
+
+---
+
+## RESOLVED 2026-09-08 — the same break, the same fix, but it took 13 hours to land
+
+Cowork ingest stopped again and was restored by the card route a second
+time. Two things are worth more than the outcome:
+
+**The fix is not instant.** The plugin was installed via `create-cowork-plugin`
+at roughly 23:00 UTC on 09-07. Threads sent immediately after produced
+nothing — a full hour of checking showed zero arrivals. The first Cowork
+event landed at **12:45 UTC on 09-08**, about thirteen hours later. It has
+run normally since.
+
+If the card install appears not to work, **wait overnight before concluding
+anything**. Reinstalling in that window would have looked like the cause of
+a recovery it had nothing to do with, and would have re-taught the wrong
+lesson.
+
+**A transient container failure impersonated a structural one.** Mid-diagnosis,
+`curl` from inside a Cowork container returned an empty body with exit 0, and
+later an `SSL_ERROR_SYSCALL`. That was read as egress interception or TLS
+termination breaking Funnel, and a Cloudflare migration was floated. It was
+none of those: the container's proxy port changed between attempts and the
+session state shifted underneath. A later check got HTTP/2 200 on both
+`/health` and a live POST to `/ingest/cowork`.
+
+**The HUD's own `/health` counters are the authority, not a report from inside
+a container.** `accepted`, `rejected` and `lastRemote` settle in one call what
+a container's `curl` only guesses at:
+
+- arrivals climbing with `lastRemote` a public IP — Cowork is reaching you
+- `rejected` climbing — arriving, failing auth (wrong key)
+- nothing moving at all — not arriving; the gap is upstream of the Mac
+
+`lastRemote: "local"` while local sessions still report is the exact signature
+of Cowork being down while everything else looks healthy.
+
+**What this recurrence ruled out, with evidence:** not the address (Funnel
+survived the reboot and answered from Anthropic's network); not the plugin
+content (rebuilt, 14 events, current hostname and key); not auth (zero
+rejections — nothing to reject); not the HUD (71 local events accepted in the
+same window); not a display filter (`filtered: 0`). The only install on record
+was `agent-hud-live@local-desktop-app-uploads` from 08-28 — the broken upload
+route. The card install from 08-31 was simply gone.
 
 ---
 
