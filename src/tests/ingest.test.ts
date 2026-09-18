@@ -13,6 +13,7 @@ import type { ThreadEvent } from '../shared/types.js';
 
 const SECRET = 'a'.repeat(64);
 const SID = '4603d1d5-aa0e-53dc-8213-7679f4d76203';
+const SID_TWO = '7c2f1b9e-3d44-41aa-9c17-0b5e2a8d6f31';
 
 async function withServer(
   fn: (base: string, events: ThreadEvent[], server: IngestServer) => Promise<void>,
@@ -157,6 +158,28 @@ test('health reports what has been received', async () => {
     const body = (await res.json()) as { ok: boolean; accepted: number };
     assert.equal(body.ok, true);
     assert.equal(body.accepted, 1);
+  });
+});
+
+test('health splits arrivals by source, so a live Cowork feed cannot mask a dead local one', async () => {
+  // The failure this exists for: on 18 Sep the check reported local sessions
+  // SILENT while Cowork reported fine, and a single `accepted` total could not
+  // say whether local events had arrived at all since the app started.
+  await withServer(async (base) => {
+    await post(base, { hook_event_name: 'Stop', session_id: SID, cwd: '/home/claude' }, AUTH);
+    await post(base, { hook_event_name: 'Stop', session_id: SID_TWO, cwd: '/Users/chris.rubin/code/agent-hud' }, AUTH);
+    await new Promise((r) => setTimeout(r, 30));
+
+    const body = (await (await fetch(`${base}/health`)).json()) as {
+      accepted: number;
+      bySource: Record<string, { accepted: number; lastEventAt?: string }>;
+    };
+    assert.equal(body.accepted, 2);
+    assert.equal(body.bySource['cowork-hook']!.accepted, 1);
+    assert.equal(body.bySource['claude-code-local']!.accepted, 1);
+    assert.ok(body.bySource['cowork-hook']!.lastEventAt, 'each source carries its own last-seen');
+    assert.ok(body.bySource['claude-code-local']!.lastEventAt);
+    assert.equal(body.bySource['browser-ext']!.accepted, 0, 'a source with nothing reads zero, not missing');
   });
 });
 

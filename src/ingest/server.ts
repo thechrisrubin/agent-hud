@@ -25,7 +25,7 @@ import { timingSafeEqual } from 'node:crypto';
 
 import { adaptHookPayload, type RawHookPayload } from './hook-adapter.js';
 import { readAiTitle } from './transcript.js';
-import type { ThreadEvent } from '../shared/types.js';
+import type { EventSource, ThreadEvent } from '../shared/types.js';
 
 const MAX_BODY_BYTES = 2_000_000;
 
@@ -36,7 +36,25 @@ export type IngestStats = {
   rejected: number;
   lastEventAt?: string;
   lastRemote?: string;
+  /**
+   * Accepted events split by where they came from, because the operator's
+   * real question is never "is anything arriving" but "is THIS source
+   * arriving". A total alone cannot answer it: a healthy Cowork feed hides a
+   * dead local one behind a rising number.
+   *
+   * Counted here rather than inferred from saved tiles: a tile can be cleared,
+   * and a cleared tile must not read as a source that has gone quiet.
+   */
+  bySource: Record<EventSource, { accepted: number; lastEventAt?: string }>;
 };
+
+function emptyBySource(): IngestStats['bySource'] {
+  return {
+    'claude-code-local': { accepted: 0 },
+    'cowork-hook': { accepted: 0 },
+    'browser-ext': { accepted: 0 },
+  };
+}
 
 export type IngestOptions = {
   port: number;
@@ -65,7 +83,13 @@ function secretMatches(provided: string, expected: string): boolean {
 
 export class IngestServer {
   private server: Server | undefined;
-  readonly stats: IngestStats = { accepted: 0, ignored: 0, filtered: 0, rejected: 0 };
+  readonly stats: IngestStats = {
+    accepted: 0,
+    ignored: 0,
+    filtered: 0,
+    rejected: 0,
+    bySource: emptyBySource(),
+  };
 
   constructor(private opts: IngestOptions) {}
 
@@ -209,6 +233,11 @@ export class IngestServer {
 
       this.stats.accepted += 1;
       this.stats.lastEventAt = result.event.ts;
+      const per = this.stats.bySource[result.event.source];
+      if (per) {
+        per.accepted += 1;
+        per.lastEventAt = result.event.ts;
+      }
       this.stats.lastRemote = String(req.headers['x-forwarded-for'] ?? 'local');
       try {
         this.opts.onEvent(result.event);

@@ -1,6 +1,65 @@
-# Where things stand — 2026-09-08
+# Where things stand — 2026-09-18
 
 **Read this first.** It is the fastest way to know what works, what is broken, and what to try next.
+
+---
+
+## 2026-09-18 — the check said SILENT when it meant "you haven't run one"
+
+CR ran the health check and got this:
+
+```
+The HUD app:          Running
+This Mac's sessions:  SILENT (last one 2 days ago (16 Sep))
+Cowork threads:       Reporting (last one 5 hours ago)
+```
+
+**The word SILENT was doing work it had not earned.** The check inferred it
+from one thing only: the newest local tile in `state.json`. Two situations
+produce that identically, and they need opposite responses —
+
+- no terminal session has been started in two days (nothing wrong, do nothing);
+- sessions ran and could not report (the wiring is broken, act now).
+
+Local hooks live in `~/.claude/settings.json`, written by `scripts/setup.sh`
+with the ingest key inside them. That file is rewritten by other things, so
+the entries can go missing or go stale without any visible sign. Nothing in
+the check looked at them.
+
+**What changed.**
+
+1. **The check now reads the wiring.** It counts the hook entries pointing at
+   `/ingest/local`, compares their key and port against `~/.agent-hud/config.json`,
+   and says which of four things is true: reporting, wired-but-quiet,
+   entries gone, or wired with the wrong key or port. Each verdict carries its
+   own next action; only the broken ones tell CR to do anything.
+2. **`/health` splits arrivals by source** (`bySource`), so "has anything local
+   arrived since the app started" is answerable from the HUD's own counters.
+   The total could never answer it — a healthy Cowork feed hides a dead local
+   one behind a rising number. The check takes the later of the two records:
+   counters reset on restart, tiles can be cleared, and neither failure can now
+   manufacture a false silence on its own.
+3. **`setup.sh` installs `check.sh` and `launch-hud.sh` into `~/.agent-hud`.**
+   It never did. The copies CR types at were placed by hand in an earlier
+   session and had been drifting behind the repo ever since — this improvement
+   would not have reached him.
+
+**What this does not settle.** Whether CR's Mac is quiet or broken is
+answered by running the new check on it. Nothing here was measured on that
+machine; it was verified against fabricated `~/.claude/settings.json` files
+covering all four verdicts, and by 83 passing tests.
+
+ASSUMPTIONS I MADE
+
+- That the local hook entries are recognisable by `type: http` and a URL
+  containing `/ingest/local`. That is what `setup.sh` writes and what it
+  already matches on when replacing its own entries — the two now agree by
+  construction, but a hand-edited entry of a different shape would read as
+  missing.
+- That 36 hours of silence is still the right threshold for Cowork. Unchanged
+  from the previous version, and unexamined.
+- That CR runs the check from `~/.agent-hud/check.sh`. The repo copy behaves
+  identically; the installed copy is now refreshed by every `setup.sh` run.
 
 ---
 
@@ -58,7 +117,7 @@ route. The card install from 08-31 was simply gone.
 | Tiles already on the grid | Intact, including click-through where the thread has an app id. |
 | Click-to-jump | Works: `claude://claude.ai/cowork/<cse_id>` opens the exact thread. |
 | Ingest address | `https://your-mac.tailXXXX.ts.net` — Tailscale Funnel, verified publicly reachable. |
-| Tests | 73 passing (`npm test`). |
+| Tests | 83 passing (`npm test`). |
 
 ## RESOLVED 2026-08-31 — install the plugin via `create-cowork-plugin`, not "Upload plugin"
 

@@ -54,6 +54,9 @@ Threads that were already open when you installed the plugin won't report — th
 **Nothing appears at all, from anything.**
 Look at the bottom of the window. It says in plain words what it's listening for and how many updates it has received. If it says something is wrong, it also says what to do.
 
+**You want to know whether it's actually listening.**
+Run `bash ~/.agent-hud/check.sh`. It answers three questions — is the app running, are this Mac's own sessions reporting, are Cowork threads reporting — and for anything that isn't, it says what to do about it. It reads the wiring as well as the tiles, so it can tell "you haven't started a session" apart from "your sessions can't reach the HUD".
+
 **Tiles appear for Claude Code but not for Cowork or your phone.**
 Your Cowork threads run in Anthropic's cloud, not on this Mac, so they need a web address to reach you. Run `bash scripts/setup-tunnel.sh`. Until then the HUD only sees terminal sessions on this machine.
 
@@ -73,7 +76,7 @@ Quit and run `npm start` again. Your green tiles and pending clears survive rest
 Send them this section.
 
 - Source is in `src/`. Four layers, deliberately independent: `ingest/` (receives events), `engine/` (decides state), `main/` (Electron shell), `renderer/` (draws).
-- `npm test` runs 64 tests. The state engine's rules are all covered, including the one that matters most: `DONE` is sticky and nothing may downgrade it.
+- `npm test` runs 83 tests. The state engine's rules are all covered, including the one that matters most: `DONE` is sticky and nothing may downgrade it.
 - Logs: `~/.agent-hud/hud.log`. Settings and the ingest key: `~/.agent-hud/config.json`. Saved tiles: `~/.agent-hud/state.json`.
 - Evidence behind every design decision is in `docs/PHASE0-FINDINGS.md` and `docs/PHASE0-PAYLOADS.md`. Those are captured from live sessions, not from documentation — where the docs and those files disagree, those files are right.
 

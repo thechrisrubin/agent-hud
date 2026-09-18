@@ -9,7 +9,9 @@
 #   3. Adds hook entries to ~/.claude/settings.json so Claude Code sessions on
 #      this Mac report their status. Existing settings are preserved — the file
 #      is merged, never overwritten, and a timestamped backup is taken first.
-#   4. Builds a plugin file on your Desktop for Cowork (only if a tunnel is set up).
+#   4. Copies the health check and the launcher into ~/.agent-hud so the
+#      commands you type always run the current version.
+#   5. Builds a plugin file on your Desktop for Cowork (only if a tunnel is set up).
 #
 # It does NOT send anything anywhere, and it does not touch your Claude account.
 
@@ -124,6 +126,19 @@ with open(path, "w") as f:
 print(f"   Registered {added} events. Your other settings were left alone.")
 PY
 
+# --- 3b. the two scripts CR actually types ----------------------------------
+#
+# Both live outside the project on purpose: the login item and the health check
+# must keep working if this folder is renamed or briefly missing. Copying them
+# here on every setup is what stops the installed copies drifting behind the
+# repo — the health check had gained a diagnosis CR would never have seen.
+
+for helper in check.sh launch-hud.sh; do
+  cp "$ROOT/scripts/$helper" "$HUD_DIR/$helper"
+  chmod +x "$HUD_DIR/$helper"
+done
+info "Health check installed:  bash ~/.agent-hud/check.sh"
+
 # --- 4. the Cowork plugin ---------------------------------------------------
 
 say "4/4  Cowork (your desktop and phone threads)"
@@ -144,6 +159,7 @@ fi
 
 say "Done."
 info "Start the HUD with:   npm start"
+info "Check on it with:     bash ~/.agent-hud/check.sh"
 info ""
 info "Right now it will show threads from Claude Code sessions on this Mac."
 if [ -z "$TUNNEL" ]; then
