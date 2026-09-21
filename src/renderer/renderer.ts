@@ -93,8 +93,32 @@ function buildTile(t: TileView): HTMLElement {
   tile.tabIndex = 0;
   tile.dataset.threadId = t.threadId;
 
-  const state = el('span', 'state', STATE_LABEL[t.state] ?? t.state);
-  tile.append(state);
+  // The head row carries the state word and, when there is one, the clear
+  // button. The button lives at the top edge on purpose: a grid full of
+  // finished threads used to push every clear button below the fold, and a
+  // taller window was not always available. Top edge means always reachable,
+  // however many tiles arrive over a weekend.
+  const head = el('div', 'head');
+  head.append(el('span', 'state', STATE_LABEL[t.state] ?? t.state));
+
+  if (t.canAcknowledge) {
+    const ack = el('button', 'ack', t.state === 'DONE' ? 'Clear' : 'Dismiss');
+    ack.type = 'button';
+    ack.title =
+      t.state === 'DONE'
+        ? 'Clear this finished thread off the grid'
+        : 'Dismiss this thread off the grid';
+    ack.setAttribute('aria-label', `${ack.textContent}: ${t.title}`);
+    ack.addEventListener('click', (e) => {
+      e.stopPropagation();
+      void window.hud.acknowledge(t.threadId);
+    });
+    // Enter and Space on the button must not also fire the tile's jump.
+    ack.addEventListener('keydown', (e) => e.stopPropagation());
+    head.append(ack);
+  }
+
+  tile.append(head);
 
   tile.append(el('div', 'title', t.title));
   tile.append(buildProgress(t));
@@ -131,15 +155,6 @@ function buildTile(t: TileView): HTMLElement {
       kids.append(el('div', 'summary', `+${busy.length - MAX_CHILD_ROWS} more running`));
     }
     tile.append(kids);
-  }
-
-  if (t.canAcknowledge) {
-    const ack = el('button', 'ack', t.state === 'DONE' ? 'Got it — clear' : 'Dismiss');
-    ack.addEventListener('click', (e) => {
-      e.stopPropagation();
-      void window.hud.acknowledge(t.threadId);
-    });
-    tile.append(ack);
   }
 
   const jump = async () => {

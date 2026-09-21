@@ -1,6 +1,28 @@
-# Where things stand — 2026-09-08
+# Where things stand — 2026-09-21
 
 **Read this first.** It is the fastest way to know what works, what is broken, and what to try next.
+
+---
+
+## CHANGED 2026-09-21 — the clear button moved to the top edge of each tile
+
+A weekend of scheduled tasks plus threads started from another machine left
+the grid packed with finished tiles. The clear button was the last element in
+each tile, so reaching it meant scrolling the grid tile by tile, and the
+window could not be dragged tall enough to escape that.
+
+The button now sits in a head row at the top of the tile, right-aligned
+opposite the state word, and it is short: **Clear** on a finished thread,
+**Dismiss** on an errored one. Position no longer depends on tile height,
+subagent count, or how many tiles are stacked above it.
+
+Side effect worth having: tiles are roughly 30px shorter without the
+full-width footer bar, so more fit in the same window.
+
+Not built, and deliberately: a **Clear all** control in the title bar. CR
+judged it unnecessary, and per-tile clearing keeps `acknowledge` a decision
+about one thread rather than a bulk action that could sweep away a `DONE`
+he had not read. Say the word and it is about ten lines.
 
 ---
 
