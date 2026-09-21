@@ -30,7 +30,7 @@ bash scripts/setup.sh
 |---|---|---|
 | 🟠 **Orange, pulsing hard** | Waiting for you to approve something | Go approve it — the thread is frozen until you do |
 | 🟡 **Amber, pulsing** | It asked you a question | Go answer it |
-| 🟢 **Bright green** | Finished. Output is ready | Read it, then hit **Got it — clear** |
+| 🟢 **Bright green** | Finished. Output is ready | Read it, then hit **Clear**, top-right of the tile |
 | 🔵 **Blue** | Working normally | Nothing |
 | 🔴 **Red** | Hit an error | The tile says what went wrong in plain words |
 | ⚫️ **Grey, dimmed** | Idle, or gone quiet for 10+ minutes | Nothing. Hidden unless you click **Quiet threads** |
@@ -40,7 +40,7 @@ Green tiles never disappear on their own. That's deliberate: a finished thread y
 ## Using it
 
 - **Click a tile** — brings the Claude app to the front and copies the thread's name. Paste it into Claude's search to open that thread. *(Claude has no way to open a specific thread from outside the app — we tested six different methods during Phase 0. Copying the name is the closest thing that actually works.)*
-- **Got it — clear** — removes a finished tile. This is how the grid stays clean.
+- **Clear** — top-right corner of a finished tile, removes it. This is how the grid stays clean. It sits at the top edge on purpose, so it stays reachable when a weekend of finished threads fills the window. Errored tiles show **Dismiss** in the same spot.
 - **Quiet threads** — shows the idle and stale ones you normally don't want to see.
 - **On top** — keeps the window above everything else.
 

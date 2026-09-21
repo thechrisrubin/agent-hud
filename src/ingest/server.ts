@@ -36,6 +36,13 @@ export type IngestStats = {
   rejected: number;
   lastEventAt?: string;
   lastRemote?: string;
+  /**
+   * When this listener started. The counters above are in memory and reset
+   * with it, so without this a reader cannot tell "nothing has ever arrived"
+   * from "nothing has arrived since the restart ninety minutes ago". The
+   * second is the failure the health check kept missing.
+   */
+  startedAt?: string;
 };
 
 export type IngestOptions = {
@@ -116,7 +123,10 @@ export class IngestServer {
       server.on('error', (err) => reject(err));
       // Bound to all interfaces so the tunnel can reach it. The secret, not
       // the bind address, is what keeps strangers out.
-      server.listen(this.opts.port, '0.0.0.0', () => resolve());
+      server.listen(this.opts.port, '0.0.0.0', () => {
+        this.stats.startedAt = new Date().toISOString();
+        resolve();
+      });
       this.server = server;
     });
   }

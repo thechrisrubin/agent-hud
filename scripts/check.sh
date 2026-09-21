@@ -68,10 +68,22 @@ STALE = 36 * 3600   # Cowork routines run daily, so a day-plus of silence is the
 local_ok  = newest["local"]  is not None and (time.time() - newest["local"])  < STALE
 cowork_ok = newest["cowork"] is not None and (time.time() - newest["cowork"]) < STALE
 
+# Since the last restart. The counters below live in memory and reset with the
+# app, so `accepted` is exactly "events since it started" — the one number that
+# separates "quiet because nothing ran" from "deaf since the restart".
+started = parse(health.get("startedAt"))
+accepted = health.get("accepted", 0)
+up_secs = (time.time() - started) if started else None
+# Long enough that a genuinely idle stretch isn't mistaken for a fault.
+DEAF = 20 * 60
+deaf = accepted == 0 and up_secs is not None and up_secs > DEAF
+
 print("")
-print("  The HUD app:          Running")
+print("  The HUD app:          Running (started %s)" % ago(started))
 print("  This Mac's sessions:  %s (last one %s)" % ("Reporting" if local_ok else "SILENT", ago(newest["local"])))
 print("  Cowork threads:       %s (last one %s)" % ("Reporting" if cowork_ok else "SILENT", ago(newest["cowork"])))
+print("  Since it started:     %d received, %d hidden as routines, %d wrong key"
+      % (accepted, health.get("filtered", 0), health.get("rejected", 0)))
 
 if health.get("rejected"):
     print("")
@@ -79,7 +91,28 @@ if health.get("rejected"):
     print("  That usually means the plugin was built with an older key.")
 
 print("")
-if local_ok and cowork_ok:
+if deaf:
+    # This is the case that used to print "everything looks healthy": the
+    # saved tiles are recent enough to pass the 36-hour test, but not one
+    # event has arrived since the app came back up.
+    print("  NOT RECEIVING. Nothing at all has arrived since the app started.")
+    print("")
+    print("  The tiles you can see are from before the restart. The app is")
+    print("  listening, but no thread has reported to it since.")
+    print("")
+    print("  What to do:")
+    print("    1. Start one new Claude Code session on this Mac, let it run a")
+    print("       few seconds, then run this check again.")
+    print("    2. If 'received' is still 0, nothing is reaching the HUD and the")
+    print("       problem is upstream of it. Tell Claude Code what this said.")
+    print("    3. If 'received' climbs but no tile appears, tell Claude Code")
+    print("       that too — the events are arriving and being dropped.")
+elif accepted == 0 and up_secs is not None:
+    print("  Started recently and nothing has come in yet. That is normal if")
+    print("  you have not run a thread since. Check again after you start one.")
+elif health.get("filtered") and not accepted:
+    print("  Everything arriving is being hidden as a scheduled routine.")
+elif local_ok and cowork_ok:
     print("  Everything looks healthy. Nothing to do.")
 elif not local_ok and not cowork_ok:
     print("  Nothing is reaching the HUD at all.")
