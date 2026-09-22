@@ -73,7 +73,7 @@ Quit and run `npm start` again. Your green tiles and pending clears survive rest
 Send them this section.
 
 - Source is in `src/`. Four layers, deliberately independent: `ingest/` (receives events), `engine/` (decides state), `main/` (Electron shell), `renderer/` (draws).
-- `npm test` runs 64 tests. The state engine's rules are all covered, including the one that matters most: `DONE` is sticky and nothing may downgrade it.
+- `npm test` runs 82 tests. The state engine's rules are all covered, including the one that matters most: `DONE` is sticky and nothing may downgrade it.
 - Logs: `~/.agent-hud/hud.log`. Settings and the ingest key: `~/.agent-hud/config.json`. Saved tiles: `~/.agent-hud/state.json`.
 - Evidence behind every design decision is in `docs/PHASE0-FINDINGS.md` and `docs/PHASE0-PAYLOADS.md`. Those are captured from live sessions, not from documentation — where the docs and those files disagree, those files are right.
 

@@ -1,6 +1,103 @@
-# Where things stand — 2026-09-21
+# Where things stand — 2026-09-22
 
 **Read this first.** It is the fastest way to know what works, what is broken, and what to try next.
+
+---
+
+## UNEXPLAINED 2026-09-22 — Cowork went silent for a day and came back on its own
+
+Cowork stopped arriving around **14:23 local on 09-21** and was reporting
+again by the evening of 09-22. **Nothing was done to fix it.** No plugin
+reinstall, no tunnel change, no config edit. It recovered by itself.
+
+Write that down rather than claiming a cause. On 09-08 a reinstall was
+nearly credited with a recovery it had nothing to do with, and inventing an
+explanation here would repeat that mistake with a different label.
+
+**Ruled out, with evidence:**
+
+| Suspect | Evidence it was not the cause |
+|---|---|
+| The clear-button change | Its two commits touch four files: `renderer.ts`, `styles.css`, `README.md`, `CURRENT-STATE.md`. Zero lines in `ingest/`, `engine/` or `main/`. |
+| The HUD's ingest path | A local session was started as a test: `accepted` climbed, a blue tile appeared, went green, cleared. End to end, working. |
+| The TLS certificate | Valid. Issued **Aug 28 2026**, expires **Nov 26 2026**, full chain verified to ISRG Root X2. |
+| The ingest secret | `rejected: 0` throughout. Nothing was arriving to be refused. |
+| Local hooks | Reported normally the whole time, before and after. |
+
+**Not established, and still open:** why the public path failed while the
+local one worked. A phone on cellular got `ERR_SSL_PROTOCOL_ERROR`; it was
+never confirmed whether that phone had Tailscale active, which would have
+invalidated the test. The failure was never reproduced from a machine that
+could be interrogated, so its cause is unknown. If Cowork goes silent again,
+**that is the first thing to establish** — see the public-path test below.
+
+**Two wrong turns from this session, marked so they are not repeated:**
+
+1. *"The certificate expired."* It had not. The timing fitted beautifully
+   and the evidence said no. A well-shaped story is not a diagnosis.
+2. *`tailscale funnel status` showing "Funnel on" means the public path
+   works.* It does not. That command prints the **local configuration**,
+   not reachability. It looked healthy through the entire outage.
+
+**The test that actually exercises the public path.** An `openssl s_client`
+run from the Mac connects to `100.x` over the tailnet and never touches the
+internet, so it cannot see this failure. Force the public address:
+
+```bash
+IP=$(dig +short your-mac.tailXXXX.ts.net @1.1.1.1 | tail -1)
+curl -sS -m 20 --resolve your-mac.tailXXXX.ts.net:443:$IP \
+  https://your-mac.tailXXXX.ts.net/health
+```
+
+Empty `$IP` means the name is not published publicly at all.
+
+---
+
+## CHANGED 2026-09-22 — one command to update, and a health check that stops lying
+
+**`bash ~/.agent-hud/update.sh`** now does the whole update: switch to main,
+pull, rebuild, reinstall the helper scripts, stop the old copy, start the new
+one, run the check. It exists because the six-command sequence it replaces
+failed twice this week in ways that looked exactly like a broken release —
+a skipped rebuild runs the old `dist/`, and closing the window with **×**
+instead of ⌘Q leaves the app holding port 43200 so the relaunch silently
+does nothing. The build runs before the running app is touched, so a failed
+build leaves the working HUD alone instead of leaving nothing.
+
+**`check.sh` printed "Everything looks healthy" while the HUD had received
+nothing for ninety minutes.** Its only freshness test was a 36-hour window
+against the saved tiles, a threshold chosen because Cowork routines run
+daily. That window cannot see an outage that began an hour ago, which is the
+only kind an operator notices. It now reads the ingest counters — which live
+in memory and reset with the app, so `accepted` is exactly "events since
+this app started" — and says **NOT RECEIVING** when the app has been up over
+twenty minutes having received nothing at all. Under twenty minutes it says
+so plainly instead of crying wolf.
+
+That false all-clear cost roughly an hour of this session. A status line that
+says "healthy" when it means "I have not checked the right thing" is worse
+than no status line, and brief §2.1 already forbids it.
+
+### ASSUMPTIONS I MADE
+
+1. **Cowork's recovery had an external cause.** Nothing on this Mac changed
+   between silence and recovery. Unverifiable from here, and the most
+   honest reading of "we did nothing and it came back".
+2. **The phone test was valid** — i.e. that phone was genuinely off the
+   tailnet. Never confirmed. If Tailscale was running on it, the one piece
+   of evidence pointing at the public path is worthless and the outage has
+   no supporting evidence at all beyond Cowork's silence.
+3. **Twenty minutes is the right threshold** for `check.sh` to call a silent
+   HUD broken. Long enough that a genuinely quiet morning does not trip it,
+   short enough to catch a real outage in one check. A guess, tuned by hand,
+   not measured.
+4. **`update.sh` hard-codes `/Users/chris.rubin/code/agent-hud`.** Single
+   operator, single machine — per brief §2. It fails with a plain message
+   naming the path if the project moves.
+5. **The macOS-specific parts of `update.sh` are unverified.** `lsof` on the
+   listening port and Electron's response to `kill` cannot be exercised on
+   Linux. The failure paths (missing project, failed build) were tested; the
+   restart path was not.
 
 ---
 
@@ -75,12 +172,15 @@ route. The card install from 08-31 was simply gone.
 
 | | |
 |---|---|
-| The HUD app | Running. `npm start` from the repo root. |
+| The HUD app | Running. `npm start` from the repo root, or `bash ~/.agent-hud/launch-hud.sh`. |
+| Updating it | `bash ~/.agent-hud/update.sh` — the whole thing, one command. |
 | Local Claude Code sessions | Reporting normally, with the app's generated names. |
+| Cowork threads | Reporting again as of the evening of 09-22, after a day's silence nobody explained. See the 09-22 entry at the top. |
 | Tiles already on the grid | Intact, including click-through where the thread has an app id. |
+| Clearing a finished tile | **Clear**, top-right corner of the tile. **Dismiss** on an errored one. |
 | Click-to-jump | Works: `claude://claude.ai/cowork/<cse_id>` opens the exact thread. |
-| Ingest address | `https://your-mac.tailXXXX.ts.net` — Tailscale Funnel, verified publicly reachable. |
-| Tests | 73 passing (`npm test`). |
+| Ingest address | `https://your-mac.tailXXXX.ts.net` — Tailscale Funnel. Cert valid to 26 Nov 2026. |
+| Tests | 82 passing (`npm test`). |
 
 ## RESOLVED 2026-08-31 — install the plugin via `create-cowork-plugin`, not "Upload plugin"
 
@@ -132,6 +232,22 @@ Full write-up for Anthropic, with evidence and a reproduction: [`SUPPORT-REPORT.
 **Do not keep reinstalling.** Four reinstalls in one evening produced no change, and the diagnostic above explains why. This is a support question for Anthropic, not a build problem.
 
 ## If it breaks again, in order
+
+**Before any of this, run `bash ~/.agent-hud/check.sh` and believe the
+`Since it started` line, not the three above it.** It separates "nothing is
+arriving" from "nothing has been sent", which is the distinction that cost
+an hour on 09-21. Then establish which half is broken before touching
+anything:
+
+- **Local sessions arriving, Cowork silent** → the public path. Run the
+  public-path test in the 09-22 entry at the top of this file. Note that
+  `tailscale funnel status` will look healthy either way; it prints local
+  configuration, not reachability.
+- **Nothing arriving at all** → the HUD or the hooks on this Mac, not
+  Cowork. Start a terminal Claude Code session and watch `accepted`.
+
+Only once the public path is confirmed open does the plugin become the
+suspect:
 
 0. **Reinstall via the `create-cowork-plugin` card route above.** That is what fixed it. Do not use "Upload plugin".
 1. **Check whether plugin sync has recovered** — ask a Cowork session to run `find ~/.claude/plugins -name hooks.json`. If it finds one, the plugin is being delivered again and threads should flow.
