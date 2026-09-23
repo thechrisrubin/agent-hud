@@ -41,7 +41,7 @@ Green tiles never disappear on their own. That's deliberate: a finished thread y
 
 ## Using it
 
-- **Click a tile** — brings the Claude app to the front and copies the thread's name. Paste it into Claude's search to open that thread. *(Claude has no way to open a specific thread from outside the app — we tested six different methods during Phase 0. Copying the name is the closest thing that actually works.)*
+- **Click a tile** — opens that exact thread in the Claude app. Two exceptions: a Cowork thread the HUD first saw before direct opening was set up brings Claude to the front and copies the thread's name for you to paste into search, and a terminal session copies its folder, since terminal sessions can't be opened from outside.
 - **Clear** — top-right corner of a finished tile, removes it. This is how the grid stays clean. It sits at the top edge on purpose, so it stays reachable when a weekend of finished threads fills the window. Errored tiles show **Dismiss** in the same spot.
 - **Quiet threads** — shows the idle and stale ones you normally don't want to see.
 - **On top** — keeps the window above everything else.
