@@ -44,9 +44,9 @@ run from the Mac connects to `100.x` over the tailnet and never touches the
 internet, so it cannot see this failure. Force the public address:
 
 ```bash
-IP=$(dig +short your-mac.tailXXXX.ts.net @1.1.1.1 | tail -1)
-curl -sS -m 20 --resolve your-mac.tailXXXX.ts.net:443:$IP \
-  https://your-mac.tailXXXX.ts.net/health
+HOST=$(node -e "console.log(require(require('os').homedir()+'/.agent-hud/config.json').tunnelHostname)")
+IP=$(dig +short "$HOST" @1.1.1.1 | tail -1)
+curl -sS -m 20 --resolve "$HOST:443:$IP" "https://$HOST/health"
 ```
 
 Empty `$IP` means the name is not published publicly at all.
@@ -179,7 +179,7 @@ route. The card install from 08-31 was simply gone.
 | Tiles already on the grid | Intact, including click-through where the thread has an app id. |
 | Clearing a finished tile | **Clear**, top-right corner of the tile. **Dismiss** on an errored one. |
 | Click-to-jump | Works: `claude://claude.ai/cowork/<cse_id>` opens the exact thread. |
-| Ingest address | `https://your-mac.tailXXXX.ts.net` — Tailscale Funnel. Cert valid to 26 Nov 2026. |
+| Ingest address | Tailscale Funnel; the hostname is `tunnelHostname` in `~/.agent-hud/config.json`. Cert valid to 26 Nov 2026. |
 | Tests | 82 passing (`npm test`). |
 
 ## RESOLVED 2026-08-31 — install the plugin via `create-cowork-plugin`, not "Upload plugin"

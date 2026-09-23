@@ -104,7 +104,7 @@ CR's company domain is on Cloudflare but managed by his developer, who was unava
 
 **Tailscale Funnel wins on the deciding criterion the brief named: setup CR can complete without touching a config file.** It needs no domain, no DNS records, and nothing his developer owns. Cloudflare needs all three.
 
-- Address: `your-mac.tailXXXX.ts.net`
+- Address: `<your-mac>.<tailnet>.ts.net` (redacted; stored as `tunnelHostname` in `~/.agent-hud/config.json`)
 - `scripts/setup-tailscale.sh` — installs, signs in, opens the port, and verifies from outside
 - `scripts/setup-tunnel.sh` — kept, for whenever the Cloudflare domain becomes available
 

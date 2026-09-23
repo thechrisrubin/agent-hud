@@ -1,6 +1,7 @@
 # Captured hook payloads — the adapter contract
 
 **Source: live capture on CR's Mac, 2026-08-28. Claude Code CLI 2.1.250.**
+Absolute paths in the committed capture are redacted to /Users/…/ ; field values and event shapes are untouched.
 Every field below was observed arriving at `127.0.0.1:43200`, not read from documentation.
 Raw evidence: `probes/captured/events.ndjson`. Regenerate this view with `node probes/summarize-captures.mjs --all`.
 

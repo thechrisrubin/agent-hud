@@ -1,5 +1,7 @@
 # Agent HUD
 
+Built for one desk — mine — and left in the open. Electron, TypeScript, 82 tests.
+
 A window that sits on your second monitor and answers one question in under two seconds:
 
 **Which of my threads needs me right now, and which are done?**
@@ -58,10 +60,10 @@ Look at the bottom of the window. It says in plain words what it's listening for
 Your Cowork threads run in Anthropic's cloud, not on this Mac, so they need a web address to reach you. Run `bash scripts/setup-tunnel.sh`. Until then the HUD only sees terminal sessions on this machine.
 
 **A tile went red but nothing was actually wrong.**
-Tell me. Stopping a thread yourself should show grey, not red, and there's a specific test protecting that.
+Open an issue. Stopping a thread yourself should show grey, not red, and there's a specific test protecting that.
 
 **A scheduled routine appeared even though routines are switched off.**
-Expected, unfortunately. Routine threads look identical to normal threads in everything Claude sends us, so the filter is best-effort. Tell me which routine leaked through and I can make the filter recognise it.
+Expected, unfortunately. Routine threads look identical to normal threads in everything Claude sends us, so the filter is best-effort. Open an issue naming the routine that leaked through and I can make the filter recognise it.
 
 **Everything is stuck / the window is blank.**
 Quit and run `npm start` again. Your green tiles and pending clears survive restarts.
@@ -98,4 +100,4 @@ By design, not by omission:
 - It doesn't show conversation content. Reading happens in Claude.
 - It doesn't track cost or usage.
 - It doesn't let you reply or approve from inside the HUD. Claude offers no supported way for an outside program to send input into a running thread — we checked. A button that pretended to approve would be worse than no button.
-- It doesn't show scheduled routines. You switched those off because 21 of them firing overnight would bury the tiles you actually need.
+- It doesn't show scheduled routines. Scheduled routines are filtered out — 21 of them firing overnight would bury the tiles that matter.
